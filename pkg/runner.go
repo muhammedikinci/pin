@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -66,7 +67,7 @@ func (r *runner) jobRunner() error {
 	resp, err := r.cli.ContainerCreate(r.ctx, &container.Config{
 		Image: r.currentJob.Image,
 		Tty:   true,
-	}, nil, nil, nil, "")
+	}, nil, nil, nil, r.currentJob.Name)
 
 	if err != nil {
 		return err
@@ -90,21 +91,13 @@ func (r *runner) jobRunner() error {
 		}
 	}
 
-	r.infoLog.Println("Container stopping")
-
-	if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
+	if err := r.stopCurrentContainer(); err != nil {
 		return err
 	}
 
-	r.infoLog.Println("Container stopped")
-
-	r.infoLog.Println("Container removing")
-
-	if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
+	if err := r.removeCurrentContainer(); err != nil {
 		return err
 	}
-
-	r.infoLog.Println("Container removed")
 
 	r.infoLog.Println("Job ended")
 
@@ -138,6 +131,35 @@ func (r *runner) commandRunner(command string) error {
 	}
 
 	io.Copy(os.Stdout, res.Reader)
+
+	status, err := r.cli.ContainerExecInspect(r.ctx, exec.ID)
+	if err != nil {
+		return err
+	}
+
+	if status.ExitCode != 0 {
+		r.infoLog.Println("Command execution failed")
+
+		r.cli.ContainerKill(r.ctx, r.containerResponse.ID, "KILL")
+
+		// TODO: Print detail exit 1 logs
+		out, err := r.cli.ContainerLogs(r.ctx, r.containerResponse.ID, types.ContainerLogsOptions{ShowStdout: true})
+		if err != nil {
+			return err
+		}
+
+		io.Copy(os.Stdout, out)
+
+		if err := r.stopCurrentContainer(); err != nil {
+			return err
+		}
+
+		if err := r.removeCurrentContainer(); err != nil {
+			return err
+		}
+
+		return errors.New("command execution failed")
+	}
 
 	r.infoLog.Println("Command execution successful")
 
@@ -233,6 +255,30 @@ func (r runner) copyToContainer() error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (r runner) stopCurrentContainer() error {
+	r.infoLog.Println("Container stopping")
+
+	if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
+		return err
+	}
+
+	r.infoLog.Println("Container stopped")
+
+	return nil
+}
+
+func (r runner) removeCurrentContainer() error {
+	r.infoLog.Println("Container removing")
+
+	if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
+		return err
+	}
+
+	r.infoLog.Println("Container removed")
 
 	return nil
 }

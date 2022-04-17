@@ -9,13 +9,6 @@ import (
 
 type Workflow []Job
 
-type Job struct {
-	Image     string
-	Script    []string
-	WorkDir   string
-	CopyFiles bool
-}
-
 func parse() (Workflow, error) {
 	var workflow Workflow = Workflow{}
 
@@ -29,6 +22,8 @@ func parse() (Workflow, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		job.Name = v
 
 		workflow = append(workflow, job)
 	}
