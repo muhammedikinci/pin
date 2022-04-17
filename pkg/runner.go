@@ -90,21 +90,21 @@ func (r *runner) jobRunner() error {
 		}
 	}
 
-	// r.infoLog.Println("Container stopping")
+	r.infoLog.Println("Container stopping")
 
-	// if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
-	// 	return err
-	// }
+	if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
+		return err
+	}
 
-	// r.infoLog.Println("Container stopped")
+	r.infoLog.Println("Container stopped")
 
-	// r.infoLog.Println("Container removing")
+	r.infoLog.Println("Container removing")
 
-	// if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
-	// 	return err
-	// }
+	if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
+		return err
+	}
 
-	// r.infoLog.Println("Container removed")
+	r.infoLog.Println("Container removed")
 
 	r.infoLog.Println("Job ended")
 
