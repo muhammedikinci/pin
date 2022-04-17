@@ -4,6 +4,7 @@ workflow:
 
 build:
   image: golang:alpine3.15
+  copyFiles: true
   script:
     - mkdir /root/folder
     - cd /root/folder

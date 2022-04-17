@@ -10,8 +10,10 @@ import (
 type Workflow []Job
 
 type Job struct {
-	Image  string
-	Script []string
+	Image     string
+	Script    []string
+	WorkDir   string
+	CopyFiles bool
 }
 
 func parse() (Workflow, error) {
@@ -47,9 +49,23 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		return Job{}, err
 	}
 
+	workDir, err := getWorkDir(configMap["workDir"])
+
+	if err != nil {
+		return Job{}, err
+	}
+
+	copyFiles, err := getCopyFiles(configMap["copyfiles"])
+
+	if err != nil {
+		return Job{}, err
+	}
+
 	var job Job = Job{
-		Image:  image,
-		Script: script,
+		Image:     image,
+		Script:    script,
+		CopyFiles: copyFiles,
+		WorkDir:   workDir,
 	}
 
 	return job, nil
@@ -81,4 +97,20 @@ func getJobScripts(script interface{}) ([]string, error) {
 	}
 
 	return nil, errors.New("`script` field is not valid")
+}
+
+func getWorkDir(workDir interface{}) (string, error) {
+	if workDir == nil {
+		return "/root", nil
+	}
+
+	return workDir.(string), nil
+}
+
+func getCopyFiles(copyFiles interface{}) (bool, error) {
+	if copyFiles == nil {
+		return false, nil
+	}
+
+	return copyFiles.(bool), nil
 }
