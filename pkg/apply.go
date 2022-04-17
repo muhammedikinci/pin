@@ -25,7 +25,12 @@ func Apply(name string, filepath string) error {
 		return err
 	}
 
-	fmt.Println(workflow)
+	currentRunner := runner{}
+
+	if err := currentRunner.run(workflow); err != nil {
+		fmt.Println(err)
+		return err
+	}
 
 	return nil
 }

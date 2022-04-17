@@ -5,7 +5,9 @@ workflow:
 build:
   image: golang:alpine3.15
   script:
-    - go build ./cmd/cli/main.go -o pin_cli
+    - mkdir /root/folder
+    - cd /root/folder
+    - touch helloworld
 
 test:
   image: golang:alpine3.15
