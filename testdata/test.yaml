@@ -1,0 +1,14 @@
+workflow:
+  - build
+  - test
+
+build:
+  image: golang:alpine3.15
+  script:
+    - go build ./cmd/cli/main.go -o pin_cli
+
+test:
+  image: golang:alpine3.15
+  script:
+    - echo "hello world"
+    - touch smart.go
