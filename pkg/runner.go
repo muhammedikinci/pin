@@ -85,10 +85,8 @@ func (r *runner) jobRunner() error {
 		return err
 	}
 
-	for _, cmd := range r.currentJob.Script {
-		if err := r.commandRunner(cmd); err != nil {
-			return err
-		}
+	if err := r.prepareAndRunShellCommandScript(); err != nil {
+		return err
 	}
 
 	if err := r.stopCurrentContainer(); err != nil {
@@ -104,13 +102,46 @@ func (r *runner) jobRunner() error {
 	return nil
 }
 
+func (r *runner) prepareAndRunShellCommandScript() error {
+	shellFileContains := ""
+
+	for _, cmd := range r.currentJob.Script {
+		shellFileContains += cmd + "\n"
+	}
+
+	if _, err := os.Stat(".pin"); os.IsNotExist(err) {
+		err = os.Mkdir(".pin", 0644)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	err := os.WriteFile(".pin/shell_command.sh", []byte(shellFileContains), 0644)
+
+	if err != nil {
+		return err
+	}
+
+	err = r.sendShellCommandFile()
+
+	if err != nil {
+		return err
+	}
+
+	if err := r.commandRunner("chmod +x ./shell_command.sh"); err != nil {
+		return err
+	}
+
+	if err := r.commandRunner("sh ./shell_command.sh"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *runner) commandRunner(command string) error {
 	args := strings.Split(command, " ")
-
-	if args[0] == "cd" && len(args) == 2 {
-		r.workDir = args[1]
-		return nil
-	}
 
 	r.infoLog.Printf("Execute command: %s", command)
 
@@ -245,6 +276,43 @@ func (r runner) copyToContainer() error {
 
 		return nil
 	})
+
+	if err != nil {
+		return err
+	}
+
+	err = r.cli.CopyToContainer(r.ctx, r.containerResponse.ID, r.workDir, &buf, types.CopyToContainerOptions{})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r runner) sendShellCommandFile() error {
+	var buf bytes.Buffer
+
+	data, err := os.ReadFile(".pin/shell_command.sh")
+
+	if err != nil {
+		return err
+	}
+
+	tw := tar.NewWriter(&buf)
+	defer tw.Close()
+
+	err = tw.WriteHeader(&tar.Header{
+		Name: "shell_command.sh",
+		Mode: 0777,
+		Size: int64(len(data)),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	_, err = tw.Write(data)
 
 	if err != nil {
 		return err
