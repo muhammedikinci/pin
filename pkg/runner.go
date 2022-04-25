@@ -14,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
+	"github.com/fatih/color"
 )
 
 type runner struct {
@@ -62,7 +63,9 @@ func (r *runner) jobRunner() error {
 		}
 	}
 
+	color.Set(color.FgGreen)
 	r.infoLog.Println("Start creating container")
+	color.Unset()
 
 	resp, err := r.cli.ContainerCreate(r.ctx, &container.Config{
 		Image: r.currentJob.Image,
@@ -79,7 +82,9 @@ func (r *runner) jobRunner() error {
 		return err
 	}
 
+	color.Set(color.FgGreen)
 	r.infoLog.Println("Starting the container")
+	color.Unset()
 
 	if err := r.cli.ContainerStart(r.ctx, r.containerResponse.ID, types.ContainerStartOptions{}); err != nil {
 		return err
@@ -97,13 +102,15 @@ func (r *runner) jobRunner() error {
 		return err
 	}
 
+	color.Set(color.FgGreen)
 	r.infoLog.Println("Job ended")
+	color.Unset()
 
 	return nil
 }
 
 func (r *runner) prepareAndRunShellCommandScript() error {
-	shellFileContains := ""
+	shellFileContains := "#!/bin/sh\nexec > /shell_command_output.log 2>&1\n"
 
 	for _, cmd := range r.currentJob.Script {
 		shellFileContains += cmd + "\n"
@@ -137,6 +144,9 @@ func (r *runner) prepareAndRunShellCommandScript() error {
 		return err
 	}
 
+	// not neccessary to handle any error
+	os.Remove(".pin/shell_command.sh")
+
 	return nil
 }
 
@@ -156,7 +166,7 @@ func (r *runner) commandRunner(command string) error {
 		return err
 	}
 
-	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, types.ExecStartCheck{})
+	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, types.ExecStartCheck{Tty: true})
 	if err != nil {
 		return err
 	}
@@ -169,17 +179,19 @@ func (r *runner) commandRunner(command string) error {
 	}
 
 	if status.ExitCode != 0 {
-		r.infoLog.Println("Command execution failed")
+		color.Set(color.FgRed)
+		r.infoLog.Printf("Command execution failed")
+
+		r.infoLog.Println("=======================")
+		r.infoLog.Println("Command Log:")
+
+		if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.containerResponse.ID, "/shell_command_output.log"); err == nil {
+			io.Copy(os.Stdout, reader)
+		}
+		r.infoLog.Println("=======================")
+		color.Unset()
 
 		r.cli.ContainerKill(r.ctx, r.containerResponse.ID, "KILL")
-
-		// TODO: Print detail exit 1 logs
-		out, err := r.cli.ContainerLogs(r.ctx, r.containerResponse.ID, types.ContainerLogsOptions{ShowStdout: true})
-		if err != nil {
-			return err
-		}
-
-		io.Copy(os.Stdout, out)
 
 		if err := r.stopCurrentContainer(); err != nil {
 			return err
@@ -206,7 +218,9 @@ func (r runner) checkTheImageAvailable() (bool, error) {
 
 	for _, v := range images {
 		if r.currentJob.Image == v.RepoTags[0] {
+			color.Set(color.FgGreen)
 			r.infoLog.Println("Image is available")
+			color.Unset()
 			return true, nil
 		}
 	}
@@ -215,7 +229,9 @@ func (r runner) checkTheImageAvailable() (bool, error) {
 }
 
 func (r runner) pullImage() error {
+	color.Set(color.FgBlue)
 	r.infoLog.Printf("Image pulling: %s", r.currentJob.Image)
+	color.Unset()
 
 	reader, err := r.cli.ImagePull(r.ctx, r.currentJob.Image, types.ImagePullOptions{})
 
@@ -328,6 +344,7 @@ func (r runner) sendShellCommandFile() error {
 }
 
 func (r runner) stopCurrentContainer() error {
+	color.Set(color.FgBlue)
 	r.infoLog.Println("Container stopping")
 
 	if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
@@ -335,11 +352,13 @@ func (r runner) stopCurrentContainer() error {
 	}
 
 	r.infoLog.Println("Container stopped")
+	color.Unset()
 
 	return nil
 }
 
 func (r runner) removeCurrentContainer() error {
+	color.Set(color.FgBlue)
 	r.infoLog.Println("Container removing")
 
 	if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
@@ -347,6 +366,7 @@ func (r runner) removeCurrentContainer() error {
 	}
 
 	r.infoLog.Println("Container removed")
+	color.Unset()
 
 	return nil
 }
