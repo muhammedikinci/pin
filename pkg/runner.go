@@ -136,11 +136,11 @@ func (r *runner) prepareAndRunShellCommandScript() error {
 		return err
 	}
 
-	if err := r.commandRunner("chmod +x ./shell_command.sh"); err != nil {
+	if err := r.commandRunner("chmod +x /home/shell_command.sh"); err != nil {
 		return err
 	}
 
-	if err := r.commandRunner("sh ./shell_command.sh"); err != nil {
+	if err := r.commandRunner("sh /home/shell_command.sh"); err != nil {
 		return err
 	}
 
@@ -205,6 +205,21 @@ func (r *runner) commandRunner(command string) error {
 	}
 
 	r.infoLog.Println("Command execution successful")
+
+	if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.containerResponse.ID, "/shell_command_output.log"); err == nil {
+		var buf bytes.Buffer
+
+		io.Copy(&buf, reader)
+
+		if buf.Len() != 0 {
+			color.Set(color.FgGreen)
+			r.infoLog.Println("=======================")
+			r.infoLog.Println("Command Log:")
+			io.Copy(os.Stdout, &buf)
+			r.infoLog.Println("=======================")
+			color.Unset()
+		}
+	}
 
 	return nil
 }
@@ -274,6 +289,11 @@ func (r runner) copyToContainer() error {
 		}
 
 		header.Name = strings.TrimPrefix(strings.Replace(path, currentPath, "", -1), string(filepath.Separator))
+		header.Name = strings.ReplaceAll(header.Name, "\\", "/")
+
+		if header.Name[0] == '.' {
+			return nil
+		}
 
 		if err := tw.WriteHeader(header); err != nil {
 			return err
@@ -334,7 +354,7 @@ func (r runner) sendShellCommandFile() error {
 		return err
 	}
 
-	err = r.cli.CopyToContainer(r.ctx, r.containerResponse.ID, r.workDir, &buf, types.CopyToContainerOptions{})
+	err = r.cli.CopyToContainer(r.ctx, r.containerResponse.ID, "/home/", &buf, types.CopyToContainerOptions{})
 
 	if err != nil {
 		return err
