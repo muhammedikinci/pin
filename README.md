@@ -82,6 +82,15 @@ If you want to see all files in the cmd folder you must set soloExecution to tru
 cd cmd && ls
 ```
 
+# Checklist
+
+- Implement web interface
+- Support concurrent jobs
+- Add working with remote docker deamon support
+- Change image pulling logs (get only status logs)
+- Add custom ignore configuration to copyFiles for project files (like gitignore)
+- Add shared artifacts support between different jobs
+
 # Contact
 
 Muhammed İkinci - muhammedikinci@outlook.com
