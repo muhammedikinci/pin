@@ -56,16 +56,16 @@ custom folder ignore doesn't support yet!
 
 default: false
 
-When you add multiple commands to the `script` field, commands are running in the container as a shell script. If soloExecution is set to `false` each command works in a different shell script.
+When you add multiple commands to the `script` field, commands are running in the container as a shell script. If soloExecution is set to `true` each command works in a different shell script.
 
-#### soloExection => true
+#### soloExection => false
 ```sh
 # shell#1
 cd cmd
 ls
 ```
 
-#### soloExection => false
+#### soloExection => true
 ```sh
 # shell#1
 cd cmd
@@ -75,7 +75,7 @@ cd cmd
 ls
 ```
 
-If you want to see all files in the cmd folder you must set soloExecution to true or you can use this:
+If you want to see all files in the cmd folder you must set soloExecution to false or you can use this:
 
 ```sh
 # shell#1
