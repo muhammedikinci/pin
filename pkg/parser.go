@@ -44,7 +44,7 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		return Job{}, err
 	}
 
-	workDir, err := getWorkDir(configMap["workDir"])
+	workDir, err := getWorkDir(configMap["workdir"])
 
 	if err != nil {
 		return Job{}, err
@@ -56,11 +56,18 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		return Job{}, err
 	}
 
+	soloExecution := getBool(configMap["soloexecution"])
+
+	if err != nil {
+		return Job{}, err
+	}
+
 	var job Job = Job{
-		Image:     image,
-		Script:    script,
-		CopyFiles: copyFiles,
-		WorkDir:   workDir,
+		Image:         image,
+		Script:        script,
+		CopyFiles:     copyFiles,
+		WorkDir:       workDir,
+		SoloExecution: soloExecution,
 	}
 
 	return job, nil
@@ -108,4 +115,12 @@ func getCopyFiles(copyFiles interface{}) (bool, error) {
 	}
 
 	return copyFiles.(bool), nil
+}
+
+func getBool(val interface{}) bool {
+	if val == nil {
+		return false
+	}
+
+	return val.(bool)
 }

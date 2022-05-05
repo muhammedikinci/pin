@@ -110,11 +110,33 @@ func (r *runner) jobRunner() error {
 }
 
 func (r *runner) prepareAndRunShellCommandScript() error {
-	shellFileContains := "#!/bin/sh\nexec > /shell_command_output.log 2>&1\n"
+	if r.currentJob.SoloExecution {
+		for _, cmd := range r.currentJob.Script {
+			err := r.commandScriptExecutor(cmd)
 
-	for _, cmd := range r.currentJob.Script {
-		shellFileContains += cmd + "\n"
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		userCommandLines := ""
+
+		for _, cmd := range r.currentJob.Script {
+			userCommandLines += cmd + "\n"
+		}
+
+		err := r.commandScriptExecutor(userCommandLines)
+
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func (r *runner) commandScriptExecutor(userCommandLines string) error {
+	shellFileContains := "#!/bin/sh\nexec > /shell_command_output.log 2>&1\n" + userCommandLines
 
 	if _, err := os.Stat(".pin"); os.IsNotExist(err) {
 		err = os.Mkdir(".pin", 0644)
@@ -136,11 +158,11 @@ func (r *runner) prepareAndRunShellCommandScript() error {
 		return err
 	}
 
-	if err := r.commandRunner("chmod +x /home/shell_command.sh"); err != nil {
+	if err := r.commandRunner("chmod +x /home/shell_command.sh", ""); err != nil {
 		return err
 	}
 
-	if err := r.commandRunner("sh /home/shell_command.sh"); err != nil {
+	if err := r.commandRunner("sh /home/shell_command.sh", userCommandLines); err != nil {
 		return err
 	}
 
@@ -150,10 +172,14 @@ func (r *runner) prepareAndRunShellCommandScript() error {
 	return nil
 }
 
-func (r *runner) commandRunner(command string) error {
+func (r *runner) commandRunner(command string, name string) error {
 	args := strings.Split(command, " ")
 
-	r.infoLog.Printf("Execute command: %s", command)
+	if name != "" && r.currentJob.SoloExecution {
+		r.infoLog.Printf("Execute command: %s", name)
+	} else if !r.currentJob.SoloExecution {
+		r.infoLog.Println("soloExecution disabled, shell command started!")
+	}
 
 	exec, err := r.cli.ContainerExecCreate(r.ctx, r.containerResponse.ID, types.ExecConfig{
 		AttachStdin:  true,
