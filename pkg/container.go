@@ -9,8 +9,28 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/fatih/color"
 )
+
+func (r *runner) startContainer() error {
+	color.Set(color.FgGreen)
+	r.infoLog.Println("Start creating container")
+	color.Unset()
+
+	resp, err := r.cli.ContainerCreate(r.ctx, &container.Config{
+		Image: r.currentJob.Image,
+		Tty:   true,
+	}, nil, nil, nil, r.currentJob.Name)
+
+	if err != nil {
+		return err
+	}
+
+	r.containerResponse = resp
+
+	return nil
+}
 
 func (r runner) stopCurrentContainer() error {
 	color.Set(color.FgBlue)
