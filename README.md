@@ -90,7 +90,7 @@ cd cmd && ls
 - Change image pulling logs (get only status logs)✅[Issue#1](https://github.com/muhammedikinci/pin/issues/1)
 - Add custom ignore configuration to copyFiles for project files (like gitignore)
 - Add shared artifacts support between different jobs 
-- Add timestamp to container names
+- Add timestamp to container names ✅[Issue#2](https://github.com/muhammedikinci/pin/issues/2)
 
 # Contact
 
