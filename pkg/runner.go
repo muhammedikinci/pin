@@ -1,14 +1,12 @@
 package pin
 
 import (
-	"archive/tar"
 	"bytes"
 	"context"
 	"errors"
 	"io"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/docker/docker/api/types"
@@ -105,32 +103,6 @@ func (r *runner) jobRunner() error {
 	color.Set(color.FgGreen)
 	r.infoLog.Println("Job ended")
 	color.Unset()
-
-	return nil
-}
-
-func (r *runner) prepareAndRunShellCommandScript() error {
-	if r.currentJob.SoloExecution {
-		for _, cmd := range r.currentJob.Script {
-			err := r.commandScriptExecutor(cmd)
-
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		userCommandLines := ""
-
-		for _, cmd := range r.currentJob.Script {
-			userCommandLines += cmd + "\n"
-		}
-
-		err := r.commandScriptExecutor(userCommandLines)
-
-		if err != nil {
-			return err
-		}
-	}
 
 	return nil
 }
@@ -246,173 +218,6 @@ func (r *runner) commandRunner(command string, name string) error {
 			color.Unset()
 		}
 	}
-
-	return nil
-}
-
-func (r runner) checkTheImageAvailable() (bool, error) {
-	images, err := r.cli.ImageList(r.ctx, types.ImageListOptions{})
-
-	if err != nil {
-		return false, err
-	}
-
-	for _, v := range images {
-		if r.currentJob.Image == v.RepoTags[0] {
-			color.Set(color.FgGreen)
-			r.infoLog.Println("Image is available")
-			color.Unset()
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-func (r runner) pullImage() error {
-	color.Set(color.FgBlue)
-	r.infoLog.Printf("Image pulling: %s", r.currentJob.Image)
-	color.Unset()
-
-	reader, err := r.cli.ImagePull(r.ctx, r.currentJob.Image, types.ImagePullOptions{})
-
-	if err != nil {
-		return err
-	}
-
-	defer reader.Close()
-
-	io.Copy(os.Stdout, reader)
-
-	return nil
-}
-
-func (r runner) copyToContainer() error {
-	if !r.currentJob.CopyFiles {
-		return nil
-	}
-
-	var buf bytes.Buffer
-
-	tw := tar.NewWriter(&buf)
-	defer tw.Close()
-
-	currentPath, _ := os.Getwd()
-
-	// TODO: add dirs, directories does not extract from docker api
-	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-
-		header, err := tar.FileInfoHeader(info, info.Name())
-		if err != nil {
-			return err
-		}
-
-		header.Name = strings.TrimPrefix(strings.Replace(path, currentPath, "", -1), string(filepath.Separator))
-		header.Name = strings.ReplaceAll(header.Name, "\\", "/")
-
-		if header.Name[0] == '.' {
-			return nil
-		}
-
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
-		defer f.Close()
-
-		if _, err := io.Copy(tw, f); err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	err = r.cli.CopyToContainer(r.ctx, r.containerResponse.ID, r.workDir, &buf, types.CopyToContainerOptions{})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r runner) sendShellCommandFile() error {
-	var buf bytes.Buffer
-
-	data, err := os.ReadFile(".pin/shell_command.sh")
-
-	if err != nil {
-		return err
-	}
-
-	tw := tar.NewWriter(&buf)
-	defer tw.Close()
-
-	err = tw.WriteHeader(&tar.Header{
-		Name: "shell_command.sh",
-		Mode: 0777,
-		Size: int64(len(data)),
-	})
-
-	if err != nil {
-		return err
-	}
-
-	_, err = tw.Write(data)
-
-	if err != nil {
-		return err
-	}
-
-	err = r.cli.CopyToContainer(r.ctx, r.containerResponse.ID, "/home/", &buf, types.CopyToContainerOptions{})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r runner) stopCurrentContainer() error {
-	color.Set(color.FgBlue)
-	r.infoLog.Println("Container stopping")
-
-	if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
-		return err
-	}
-
-	r.infoLog.Println("Container stopped")
-	color.Unset()
-
-	return nil
-}
-
-func (r runner) removeCurrentContainer() error {
-	color.Set(color.FgBlue)
-	r.infoLog.Println("Container removing")
-
-	if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
-		return err
-	}
-
-	r.infoLog.Println("Container removed")
-	color.Unset()
 
 	return nil
 }
