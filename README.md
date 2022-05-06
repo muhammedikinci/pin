@@ -52,20 +52,20 @@ If you want to copy all projects filed to the docker container, you must set thi
 
 custom folder ignore doesn't support yet!
 
-## soloExection
+## soloExecution
 
 default: false
 
 When you add multiple commands to the `script` field, commands are running in the container as a shell script. If soloExecution is set to `true` each command works in a different shell script.
 
-#### soloExection => false
+#### soloExecution => false
 ```sh
 # shell#1
 cd cmd
 ls
 ```
 
-#### soloExection => true
+#### soloExecution => true
 ```sh
 # shell#1
 cd cmd
@@ -87,9 +87,9 @@ cd cmd && ls
 - Implement web interface
 - Support concurrent jobs
 - Add working with remote docker deamon support
-- Change image pulling logs (get only status logs)
+- Change image pulling logs (get only status logs)✅[Issue#1](https://github.com/muhammedikinci/pin/issues/1)
 - Add custom ignore configuration to copyFiles for project files (like gitignore)
-- Add shared artifacts support between different jobs
+- Add shared artifacts support between different jobs 
 
 # Contact
 
