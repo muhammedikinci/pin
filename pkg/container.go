@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -18,10 +20,12 @@ func (r *runner) startContainer() error {
 	r.infoLog.Println("Start creating container")
 	color.Unset()
 
+	containerName := r.currentJob.Name + "_" + strconv.Itoa(int(time.Now().UnixMilli()))
+
 	resp, err := r.cli.ContainerCreate(r.ctx, &container.Config{
 		Image: r.currentJob.Image,
 		Tty:   true,
-	}, nil, nil, nil, r.currentJob.Name)
+	}, nil, nil, nil, containerName)
 
 	if err != nil {
 		return err
