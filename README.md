@@ -8,7 +8,7 @@
 
 WIP - Local pipeline command line and web interface project with Docker Golang API.
 
-![pingif](https://user-images.githubusercontent.com/11901620/166977370-9526a377-41d6-4c96-a2b3-56f57ee4edd1.gif)
+![pingif](asset/pin.gif)
 
 # 🌐 Installation 
 
