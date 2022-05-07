@@ -27,7 +27,6 @@ func init() {
 	applyCmd.PersistentFlags().StringVarP(&pipelineName, "name", "n", "", "pipeline name")
 	applyCmd.PersistentFlags().StringVarP(&pipelineFilePath, "filepath", "f", "", "pipeline configuration file path")
 
-	applyCmd.MarkPersistentFlagRequired("name")
 	applyCmd.MarkPersistentFlagRequired("filepath")
 
 	rootCmd.AddCommand(applyCmd)
