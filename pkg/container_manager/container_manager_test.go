@@ -1,8 +1,16 @@
 package container_manager
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
@@ -197,4 +205,40 @@ func TestWhenContainerRemoveReturnNilRemoveContainerMustReturnNil(t *testing.T) 
 	err := cm.RemoveContainer("")
 
 	assert.Equal(t, err, nil)
+}
+
+func TestAppender(t *testing.T) {
+	var buf bytes.Buffer
+
+	tw := tar.NewWriter(&buf)
+	basepath, _ := os.Getwd()
+	dir := filepath.Dir(filepath.Dir(basepath))
+	currentPath := filepath.FromSlash(path.Join(dir, "testdata"))
+	fmt.Println(dir)
+	cm := containerManager{}
+
+	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
+		return cm.appender(path, info, err, currentPath, tw)
+	})
+
+	assert.Equal(t, err, nil)
+
+	tw.Close()
+
+	tr := tar.NewReader(&buf)
+
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+		}
+		if header == nil {
+			break
+		}
+
+		assert.Equal(t, header.Name[0] == '.', false)
+		assert.Equal(t, strings.Contains(header.Name, "node_modules"), false)
+	}
 }

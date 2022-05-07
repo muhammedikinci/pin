@@ -124,6 +124,10 @@ func (cm containerManager) appender(path string, info os.FileInfo, err error, cu
 		return nil
 	}
 
+	if strings.Contains(header.Name, "node_modules") {
+		return nil
+	}
+
 	if err := tw.WriteHeader(header); err != nil {
 		return err
 	}

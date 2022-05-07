@@ -105,7 +105,7 @@ go test ./...
 - Add timestamp to container names ✅[Issue#2](https://github.com/muhammedikinci/pin/issues/2)
 - Create small pieces with extracting codes from runner struct and write unit test:
   - Image Manager ✅[Issue#3](https://github.com/muhammedikinci/pin/issues/3)
-  - Container Manager Not Completed Yet [Issue#4](https://github.com/muhammedikinci/pin/issues/4)
+  - Container Manager ✅[Issue#4](https://github.com/muhammedikinci/pin/issues/4)
   - Shell Commander ✅[Issue#5](https://github.com/muhammedikinci/pin/issues/5)
   - Parser
   - Runner
