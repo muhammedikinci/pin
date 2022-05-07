@@ -4,7 +4,7 @@
   <br>
 </p>
 
-# pin 🔥 ![Go CI/CD](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)
+# pin 🔥 [<!--lint ignore no-dead-urls-->![GitHub Actions status | sdras/awesome-actions](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)](https://github.com/muhammedikinci/pin/actions/workflows/go.yml)
 
 WIP - Local pipeline command line and web interface project with Docker Golang API.
 
@@ -105,8 +105,8 @@ go test ./...
 - Add timestamp to container names ✅[Issue#2](https://github.com/muhammedikinci/pin/issues/2)
 - Create small pieces with extracting codes from runner struct and write unit test:
   - Image Manager ✅[Issue#3](https://github.com/muhammedikinci/pin/issues/3)
-  - Container Manager
-  - Shell Commander
+  - Container Manager Not Completed Yet [Issue#4](https://github.com/muhammedikinci/pin/issues/4)
+  - Shell Commander Not Completed Yet [Issue#5](https://github.com/muhammedikinci/pin/issues/5)
   - Parser
   - Runner
 

@@ -1,8 +1,9 @@
-package pin
+package container_manager
 
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -13,62 +14,71 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/fatih/color"
+	"github.com/muhammedikinci/pin/pkg/interfaces"
 )
 
-func (r *Runner) startContainer() error {
+type ContainerManager struct {
+	ctx context.Context
+	cli interfaces.Client
+	log interfaces.Log
+}
+
+func NewContainerManager(ctx context.Context, cli interfaces.Client, log interfaces.Log) ContainerManager {
+	return ContainerManager{
+		ctx: ctx,
+		cli: cli,
+		log: log,
+	}
+}
+
+func (cm ContainerManager) StartContainer(jobName string, image string) (container.ContainerCreateCreatedBody, error) {
 	color.Set(color.FgGreen)
-	r.infoLog.Println("Start creating container")
+	cm.log.Println("Start creating container")
 	color.Unset()
 
-	containerName := r.currentJob.Name + "_" + strconv.Itoa(int(time.Now().UnixMilli()))
+	containerName := jobName + "_" + strconv.Itoa(int(time.Now().UnixMilli()))
 
-	resp, err := r.cli.ContainerCreate(r.ctx, &container.Config{
-		Image: r.currentJob.Image,
+	resp, err := cm.cli.ContainerCreate(cm.ctx, &container.Config{
+		Image: image,
 		Tty:   true,
 	}, nil, nil, nil, containerName)
 
 	if err != nil {
-		return err
+		return container.ContainerCreateCreatedBody{}, err
 	}
 
-	r.containerResponse = resp
-
-	return nil
+	return resp, nil
 }
 
-func (r Runner) stopCurrentContainer() error {
+func (cm ContainerManager) StopContainer(containerID string) error {
 	color.Set(color.FgBlue)
-	r.infoLog.Println("Container stopping")
+	cm.log.Println("Container stopping")
 
-	if err := r.cli.ContainerStop(r.ctx, r.containerResponse.ID, nil); err != nil {
+	if err := cm.cli.ContainerStop(cm.ctx, containerID, nil); err != nil {
 		return err
 	}
 
-	r.infoLog.Println("Container stopped")
+	cm.log.Println("Container stopped")
 	color.Unset()
 
 	return nil
 }
 
-func (r Runner) removeCurrentContainer() error {
+func (cm ContainerManager) RemoveContainer(containerID string) error {
 	color.Set(color.FgBlue)
-	r.infoLog.Println("Container removing")
+	cm.log.Println("Container removing")
 
-	if err := r.cli.ContainerRemove(r.ctx, r.containerResponse.ID, types.ContainerRemoveOptions{}); err != nil {
+	if err := cm.cli.ContainerRemove(cm.ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
 		return err
 	}
 
-	r.infoLog.Println("Container removed")
+	cm.log.Println("Container removed")
 	color.Unset()
 
 	return nil
 }
 
-func (r Runner) copyToContainer() error {
-	if !r.currentJob.CopyFiles {
-		return nil
-	}
-
+func (cm ContainerManager) CopyToContainer(containerID, workDir string) error {
 	var buf bytes.Buffer
 
 	tw := tar.NewWriter(&buf)
@@ -120,7 +130,7 @@ func (r Runner) copyToContainer() error {
 		return err
 	}
 
-	err = r.cli.CopyToContainer(r.ctx, r.containerResponse.ID, r.workDir, &buf, types.CopyToContainerOptions{})
+	err = cm.cli.CopyToContainer(cm.ctx, containerID, workDir, &buf, types.CopyToContainerOptions{})
 
 	if err != nil {
 		return err

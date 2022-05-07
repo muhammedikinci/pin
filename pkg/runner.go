@@ -13,18 +13,22 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
+	"github.com/muhammedikinci/pin/pkg/container_manager"
 	"github.com/muhammedikinci/pin/pkg/image_manager"
 	"github.com/muhammedikinci/pin/pkg/interfaces"
+	"github.com/muhammedikinci/pin/pkg/shell_commander"
 )
 
 type Runner struct {
-	ctx               context.Context
-	cli               interfaces.Client
-	containerResponse container.ContainerCreateCreatedBody
-	currentJob        Job
-	workDir           string
-	infoLog           *log.Logger
-	imageManager      interfaces.ImageManager
+	ctx              context.Context
+	cli              interfaces.Client
+	currentJob       Job
+	workDir          string
+	infoLog          *log.Logger
+	imageManager     interfaces.ImageManager
+	containerManager interfaces.ContainerManager
+	shellCommander   interfaces.ShellCommander
+	container        container.ContainerCreateCreatedBody
 }
 
 func (r *Runner) run(workflow Workflow) error {
@@ -39,10 +43,12 @@ func (r *Runner) run(workflow Workflow) error {
 
 	r.cli = cli
 	r.imageManager = image_manager.NewImageManager(r.ctx, r.cli, r.infoLog)
+	r.containerManager = container_manager.NewContainerManager(r.ctx, r.cli, r.infoLog)
 
 	for _, job := range workflow {
 		r.currentJob = job
 		r.workDir = job.WorkDir
+		r.shellCommander = shell_commander.NewShellCommander()
 
 		if err := r.jobRunner(); err != nil {
 			return err
@@ -65,31 +71,37 @@ func (r *Runner) jobRunner() error {
 		}
 	}
 
-	if err := r.startContainer(); err != nil {
+	resp, err := r.containerManager.StartContainer(r.currentJob.Name, r.currentJob.Image)
+
+	if err != nil {
 		return err
 	}
 
-	if err := r.copyToContainer(); err != nil {
-		return err
+	r.container = resp
+
+	if r.currentJob.CopyFiles {
+		if err := r.containerManager.CopyToContainer(resp.ID, r.workDir); err != nil {
+			return err
+		}
 	}
 
 	color.Set(color.FgGreen)
 	r.infoLog.Println("Starting the container")
 	color.Unset()
 
-	if err := r.cli.ContainerStart(r.ctx, r.containerResponse.ID, types.ContainerStartOptions{}); err != nil {
+	if err := r.cli.ContainerStart(r.ctx, r.container.ID, types.ContainerStartOptions{}); err != nil {
 		return err
 	}
 
-	if err := r.prepareAndRunShellCommandScript(); err != nil {
+	if err := r.commandScriptExecutor(); err != nil {
 		return err
 	}
 
-	if err := r.stopCurrentContainer(); err != nil {
+	if err := r.containerManager.StopContainer(r.container.ID); err != nil {
 		return err
 	}
 
-	if err := r.removeCurrentContainer(); err != nil {
+	if err := r.containerManager.RemoveContainer(r.container.ID); err != nil {
 		return err
 	}
 
@@ -100,39 +112,30 @@ func (r *Runner) jobRunner() error {
 	return nil
 }
 
-func (r *Runner) commandScriptExecutor(userCommandLines string) error {
-	shellFileContains := "#!/bin/sh\nexec > /shell_command_output.log 2>&1\n" + userCommandLines
+func (r *Runner) commandScriptExecutor() error {
+	cmds := r.shellCommander.PrepareShellCommands(r.currentJob.SoloExecution, r.currentJob.Script)
 
-	if _, err := os.Stat(".pin"); os.IsNotExist(err) {
-		err = os.Mkdir(".pin", 0644)
+	for _, cmd := range cmds {
+		buf, err := r.shellCommander.ShellToTar(cmd)
 
 		if err != nil {
 			return err
 		}
+
+		err = r.cli.CopyToContainer(r.ctx, r.container.ID, "/home/", buf, types.CopyToContainerOptions{})
+
+		if err != nil {
+			return err
+		}
+
+		if err := r.commandRunner("chmod +x /home/shell_command.sh", ""); err != nil {
+			return err
+		}
+
+		if err := r.commandRunner("sh /home/shell_command.sh", cmd); err != nil {
+			return err
+		}
 	}
-
-	err := os.WriteFile(".pin/shell_command.sh", []byte(shellFileContains), 0644)
-
-	if err != nil {
-		return err
-	}
-
-	err = r.sendShellCommandFile()
-
-	if err != nil {
-		return err
-	}
-
-	if err := r.commandRunner("chmod +x /home/shell_command.sh", ""); err != nil {
-		return err
-	}
-
-	if err := r.commandRunner("sh /home/shell_command.sh", userCommandLines); err != nil {
-		return err
-	}
-
-	// not neccessary to handle any error
-	os.Remove(".pin/shell_command.sh")
 
 	return nil
 }
@@ -146,7 +149,7 @@ func (r *Runner) commandRunner(command string, name string) error {
 		r.infoLog.Println("soloExecution disabled, shell command started!")
 	}
 
-	exec, err := r.cli.ContainerExecCreate(r.ctx, r.containerResponse.ID, types.ExecConfig{
+	exec, err := r.cli.ContainerExecCreate(r.ctx, r.container.ID, types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
@@ -176,19 +179,19 @@ func (r *Runner) commandRunner(command string, name string) error {
 		r.infoLog.Println("=======================")
 		r.infoLog.Println("Command Log:")
 
-		if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.containerResponse.ID, "/shell_command_output.log"); err == nil {
+		if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
 			io.Copy(os.Stdout, reader)
 		}
 		r.infoLog.Println("=======================")
 		color.Unset()
 
-		r.cli.ContainerKill(r.ctx, r.containerResponse.ID, "KILL")
+		r.cli.ContainerKill(r.ctx, r.container.ID, "KILL")
 
-		if err := r.stopCurrentContainer(); err != nil {
+		if err := r.containerManager.StopContainer(r.container.ID); err != nil {
 			return err
 		}
 
-		if err := r.removeCurrentContainer(); err != nil {
+		if err := r.containerManager.RemoveContainer(r.container.ID); err != nil {
 			return err
 		}
 
@@ -197,7 +200,7 @@ func (r *Runner) commandRunner(command string, name string) error {
 
 	r.infoLog.Println("Command execution successful")
 
-	if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.containerResponse.ID, "/shell_command_output.log"); err == nil {
+	if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
 		var buf bytes.Buffer
 
 		io.Copy(&buf, reader)
