@@ -1,10 +1,12 @@
 package pin
 
 import (
-	"bytes"
+	"archive/tar"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -148,6 +150,8 @@ func (r *Runner) commandRunner(command string, name string) error {
 	args := strings.Split(command, " ")
 
 	if name != "" && r.currentJob.SoloExecution {
+		lines := strings.Split(name, "\n")
+		name = strings.Join(lines[2:], "\n")
 		r.infoLog.Printf("Execute command: %s", name)
 	} else if !r.currentJob.SoloExecution {
 		r.infoLog.Println("soloExecution disabled, shell command started!")
@@ -184,7 +188,10 @@ func (r *Runner) commandRunner(command string, name string) error {
 		r.infoLog.Println("Command Log:")
 
 		if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
-			io.Copy(os.Stdout, reader)
+			tr := tar.NewReader(reader)
+			tr.Next()
+			b, _ := ioutil.ReadAll(tr)
+			fmt.Println("\n" + string(b))
 		}
 		r.infoLog.Println("=======================")
 		color.Unset()
@@ -205,15 +212,15 @@ func (r *Runner) commandRunner(command string, name string) error {
 	r.infoLog.Println("Command execution successful")
 
 	if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
-		var buf bytes.Buffer
+		tr := tar.NewReader(reader)
+		tr.Next()
+		b, _ := ioutil.ReadAll(tr)
 
-		io.Copy(&buf, reader)
-
-		if buf.Len() != 0 {
+		if len(b) != 0 {
 			color.Set(color.FgGreen)
 			r.infoLog.Println("=======================")
 			r.infoLog.Println("Command Log:")
-			io.Copy(os.Stdout, &buf)
+			fmt.Println("\n" + string(b))
 			r.infoLog.Println("=======================")
 			color.Unset()
 		}
