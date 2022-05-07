@@ -1,6 +1,6 @@
 <p align="center">
   <br>
-    <img src="asset/pin.png" width="150"/>
+    <img src="asset/pin.png" width="200"/>
   <br>
 </p>
 
