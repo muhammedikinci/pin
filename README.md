@@ -106,9 +106,10 @@ go test ./...
 - Create small pieces with extracting codes from runner struct and write unit test:
   - Image Manager ✅[Issue#3](https://github.com/muhammedikinci/pin/issues/3)
   - Container Manager Not Completed Yet [Issue#4](https://github.com/muhammedikinci/pin/issues/4)
-  - Shell Commander Not Completed Yet [Issue#5](https://github.com/muhammedikinci/pin/issues/5)
+  - Shell Commander ✅[Issue#5](https://github.com/muhammedikinci/pin/issues/5)
   - Parser
   - Runner
+- Add port expose support
 
 # Contact
 

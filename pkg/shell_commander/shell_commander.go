@@ -15,6 +15,10 @@ func NewShellCommander() ShellCommander {
 func (sc ShellCommander) PrepareShellCommands(soloExecution bool, scripts []string) []string {
 	cmds := []string{}
 
+	if len(scripts) == 0 {
+		return cmds
+	}
+
 	if soloExecution {
 		for _, cmd := range scripts {
 			cmds = append(cmds, sc.wrapCommand(cmd))

@@ -128,11 +128,15 @@ func (r *Runner) commandScriptExecutor() error {
 			return err
 		}
 
-		if err := r.commandRunner("chmod +x /home/shell_command.sh", ""); err != nil {
+		if err := r.internalExec("chmod +x /home/shell_command.sh"); err != nil {
 			return err
 		}
 
 		if err := r.commandRunner("sh /home/shell_command.sh", cmd); err != nil {
+			return err
+		}
+
+		if err := r.internalExec("rm /home/shell_command.sh"); err != nil {
 			return err
 		}
 	}
@@ -213,6 +217,35 @@ func (r *Runner) commandRunner(command string, name string) error {
 			r.infoLog.Println("=======================")
 			color.Unset()
 		}
+	}
+
+	return nil
+}
+
+func (r Runner) internalExec(command string) error {
+	args := strings.Split(command, " ")
+
+	exec, err := r.cli.ContainerExecCreate(r.ctx, r.container.ID, types.ExecConfig{
+		AttachStdin:  true,
+		AttachStdout: true,
+		Cmd:          args,
+		WorkingDir:   r.workDir,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, types.ExecStartCheck{Tty: true})
+	if err != nil {
+		return err
+	}
+
+	io.Copy(os.Stdout, res.Reader)
+
+	_, err = r.cli.ContainerExecInspect(r.ctx, exec.ID)
+	if err != nil {
+		return err
 	}
 
 	return nil

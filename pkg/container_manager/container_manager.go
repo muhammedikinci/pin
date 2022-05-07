@@ -17,21 +17,21 @@ import (
 	"github.com/muhammedikinci/pin/pkg/interfaces"
 )
 
-type ContainerManager struct {
+type containerManager struct {
 	ctx context.Context
 	cli interfaces.Client
 	log interfaces.Log
 }
 
-func NewContainerManager(ctx context.Context, cli interfaces.Client, log interfaces.Log) ContainerManager {
-	return ContainerManager{
+func NewContainerManager(ctx context.Context, cli interfaces.Client, log interfaces.Log) containerManager {
+	return containerManager{
 		ctx: ctx,
 		cli: cli,
 		log: log,
 	}
 }
 
-func (cm ContainerManager) StartContainer(jobName string, image string) (container.ContainerCreateCreatedBody, error) {
+func (cm containerManager) StartContainer(jobName string, image string) (container.ContainerCreateCreatedBody, error) {
 	color.Set(color.FgGreen)
 	cm.log.Println("Start creating container")
 	color.Unset()
@@ -50,7 +50,7 @@ func (cm ContainerManager) StartContainer(jobName string, image string) (contain
 	return resp, nil
 }
 
-func (cm ContainerManager) StopContainer(containerID string) error {
+func (cm containerManager) StopContainer(containerID string) error {
 	color.Set(color.FgBlue)
 	cm.log.Println("Container stopping")
 
@@ -64,7 +64,7 @@ func (cm ContainerManager) StopContainer(containerID string) error {
 	return nil
 }
 
-func (cm ContainerManager) RemoveContainer(containerID string) error {
+func (cm containerManager) RemoveContainer(containerID string) error {
 	color.Set(color.FgBlue)
 	cm.log.Println("Container removing")
 
@@ -78,7 +78,7 @@ func (cm ContainerManager) RemoveContainer(containerID string) error {
 	return nil
 }
 
-func (cm ContainerManager) CopyToContainer(containerID, workDir string) error {
+func (cm containerManager) CopyToContainer(containerID, workDir string) error {
 	var buf bytes.Buffer
 
 	tw := tar.NewWriter(&buf)
@@ -86,44 +86,8 @@ func (cm ContainerManager) CopyToContainer(containerID, workDir string) error {
 
 	currentPath, _ := os.Getwd()
 
-	// TODO: add dirs, directories does not extract from docker api
 	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !info.Mode().IsRegular() {
-			return nil
-		}
-
-		header, err := tar.FileInfoHeader(info, info.Name())
-		if err != nil {
-			return err
-		}
-
-		header.Name = strings.TrimPrefix(strings.Replace(path, currentPath, "", -1), string(filepath.Separator))
-		header.Name = strings.ReplaceAll(header.Name, "\\", "/")
-
-		if header.Name[0] == '.' {
-			return nil
-		}
-
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
-		defer f.Close()
-
-		if _, err := io.Copy(tw, f); err != nil {
-			return err
-		}
-
-		return nil
+		return cm.appender(path, info, err, currentPath, tw)
 	})
 
 	if err != nil {
@@ -133,6 +97,45 @@ func (cm ContainerManager) CopyToContainer(containerID, workDir string) error {
 	err = cm.cli.CopyToContainer(cm.ctx, containerID, workDir, &buf, types.CopyToContainerOptions{})
 
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cm containerManager) appender(path string, info os.FileInfo, err error, currentPath string, tw *tar.Writer) error {
+	if err != nil {
+		return err
+	}
+
+	if !info.Mode().IsRegular() {
+		return nil
+	}
+
+	header, err := tar.FileInfoHeader(info, info.Name())
+	if err != nil {
+		return err
+	}
+
+	header.Name = strings.TrimPrefix(strings.Replace(path, currentPath, "", -1), string(filepath.Separator))
+	header.Name = strings.ReplaceAll(header.Name, "\\", "/")
+
+	if header.Name[0] == '.' {
+		return nil
+	}
+
+	if err := tw.WriteHeader(header); err != nil {
+		return err
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	if _, err := io.Copy(tw, f); err != nil {
 		return err
 	}
 
