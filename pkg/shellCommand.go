@@ -8,7 +8,7 @@ import (
 	"github.com/docker/docker/api/types"
 )
 
-func (r *runner) prepareAndRunShellCommandScript() error {
+func (r *Runner) prepareAndRunShellCommandScript() error {
 	if r.currentJob.SoloExecution {
 		for _, cmd := range r.currentJob.Script {
 			err := r.commandScriptExecutor(cmd)
@@ -34,7 +34,7 @@ func (r *runner) prepareAndRunShellCommandScript() error {
 	return nil
 }
 
-func (r runner) sendShellCommandFile() error {
+func (r Runner) sendShellCommandFile() error {
 	var buf bytes.Buffer
 
 	data, err := os.ReadFile(".pin/shell_command.sh")

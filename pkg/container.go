@@ -15,7 +15,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func (r *runner) startContainer() error {
+func (r *Runner) startContainer() error {
 	color.Set(color.FgGreen)
 	r.infoLog.Println("Start creating container")
 	color.Unset()
@@ -36,7 +36,7 @@ func (r *runner) startContainer() error {
 	return nil
 }
 
-func (r runner) stopCurrentContainer() error {
+func (r Runner) stopCurrentContainer() error {
 	color.Set(color.FgBlue)
 	r.infoLog.Println("Container stopping")
 
@@ -50,7 +50,7 @@ func (r runner) stopCurrentContainer() error {
 	return nil
 }
 
-func (r runner) removeCurrentContainer() error {
+func (r Runner) removeCurrentContainer() error {
 	color.Set(color.FgBlue)
 	r.infoLog.Println("Container removing")
 
@@ -64,7 +64,7 @@ func (r runner) removeCurrentContainer() error {
 	return nil
 }
 
-func (r runner) copyToContainer() error {
+func (r Runner) copyToContainer() error {
 	if !r.currentJob.CopyFiles {
 		return nil
 	}

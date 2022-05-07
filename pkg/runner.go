@@ -13,18 +13,21 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
+	"github.com/muhammedikinci/pin/pkg/image_manager"
+	"github.com/muhammedikinci/pin/pkg/interfaces"
 )
 
-type runner struct {
+type Runner struct {
 	ctx               context.Context
-	cli               *client.Client
+	cli               interfaces.Client
 	containerResponse container.ContainerCreateCreatedBody
 	currentJob        Job
 	workDir           string
 	infoLog           *log.Logger
+	imageManager      interfaces.ImageManager
 }
 
-func (r *runner) run(workflow Workflow) error {
+func (r *Runner) run(workflow Workflow) error {
 	r.infoLog = log.New(os.Stdout, "INFO \t", log.Ldate|log.Ltime)
 	r.ctx = context.Background()
 
@@ -35,6 +38,7 @@ func (r *runner) run(workflow Workflow) error {
 	}
 
 	r.cli = cli
+	r.imageManager = image_manager.NewImageManager(r.ctx, r.cli, r.infoLog)
 
 	for _, job := range workflow {
 		r.currentJob = job
@@ -48,15 +52,15 @@ func (r *runner) run(workflow Workflow) error {
 	return nil
 }
 
-func (r *runner) jobRunner() error {
-	isImageAvailable, err := r.checkTheImageAvailable()
+func (r *Runner) jobRunner() error {
+	isImageAvailable, err := r.imageManager.CheckTheImageAvailable(r.currentJob.Image)
 
 	if err != nil {
 		return err
 	}
 
 	if !isImageAvailable {
-		if err := r.pullImage(); err != nil {
+		if err := r.imageManager.PullImage(r.currentJob.Image); err != nil {
 			return err
 		}
 	}
@@ -96,7 +100,7 @@ func (r *runner) jobRunner() error {
 	return nil
 }
 
-func (r *runner) commandScriptExecutor(userCommandLines string) error {
+func (r *Runner) commandScriptExecutor(userCommandLines string) error {
 	shellFileContains := "#!/bin/sh\nexec > /shell_command_output.log 2>&1\n" + userCommandLines
 
 	if _, err := os.Stat(".pin"); os.IsNotExist(err) {
@@ -133,7 +137,7 @@ func (r *runner) commandScriptExecutor(userCommandLines string) error {
 	return nil
 }
 
-func (r *runner) commandRunner(command string, name string) error {
+func (r *Runner) commandRunner(command string, name string) error {
 	args := strings.Split(command, " ")
 
 	if name != "" && r.currentJob.SoloExecution {
