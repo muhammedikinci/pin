@@ -82,6 +82,12 @@ If you want to see all files in the cmd folder you must set soloExecution to fal
 cd cmd && ls
 ```
 
+# Tests
+
+```sh
+go test ./...
+```
+
 # Checklist
 
 - Implement web interface
@@ -91,6 +97,12 @@ cd cmd && ls
 - Add custom ignore configuration to copyFiles for project files (like gitignore)
 - Add shared artifacts support between different jobs 
 - Add timestamp to container names ✅[Issue#2](https://github.com/muhammedikinci/pin/issues/2)
+- Create small pieces with extracting codes from runner struct and write unit test:
+  - Image Manager ✅[Issue#3](https://github.com/muhammedikinci/pin/issues/3)
+  - Container Manager
+  - Shell Commander
+  - Parser
+  - Runner
 
 # Contact
 
