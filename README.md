@@ -1,4 +1,10 @@
-# pin 🔥
+<p align="center">
+  <br>
+    <img src="asset/pin.png" width="150"/>
+  <br>
+</p>
+
+# pin 🔥 ![Go CI/CD](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)
 
 WIP - Local pipeline command line and web interface project with Docker Golang API.
 
