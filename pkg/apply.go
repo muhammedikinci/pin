@@ -18,7 +18,7 @@ func Apply(name string, filepath string) error {
 		return err
 	}
 
-	workflow, err := parse()
+	pipeline, err := parse()
 
 	if err != nil {
 		fmt.Println(err)
@@ -27,7 +27,7 @@ func Apply(name string, filepath string) error {
 
 	currentRunner := Runner{}
 
-	if err := currentRunner.run(workflow); err != nil {
+	if err := currentRunner.run(pipeline); err != nil {
 		fmt.Println(err)
 		return err
 	}

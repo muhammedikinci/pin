@@ -38,6 +38,8 @@ Sample yaml file
 workflow:
   - run
 
+logsWithTime: true
+
 run:
   image: golang:alpine3.15
   copyFiles: true
@@ -86,6 +88,26 @@ If you want to see all files in the cmd folder you must set soloExecution to fal
 ```sh
 # shell#1
 cd cmd && ls
+```
+
+## logsWithTime
+
+default: false
+
+logsWithTime => true
+```sh
+⚉ 2022/05/08 11:36:30 Image is available
+⚉ 2022/05/08 11:36:30 Start creating container
+⚉ 2022/05/08 11:36:33 Starting the container
+⚉ 2022/05/08 11:36:35 Execute command: ls -a
+```
+
+logsWithTime => false
+```sh
+⚉ Image is available
+⚉ Start creating container
+⚉ Starting the container
+⚉ Execute command: ls -a
 ```
 
 # Tests

@@ -33,8 +33,12 @@ type Runner struct {
 	container        container.ContainerCreateCreatedBody
 }
 
-func (r *Runner) run(workflow Workflow) error {
-	r.infoLog = log.New(os.Stdout, "INFO \t", log.Ldate|log.Ltime)
+func (r *Runner) run(pipeline Pipeline) error {
+	if pipeline.LogsWithTime {
+		r.infoLog = log.New(os.Stdout, "⚉ ", log.Ldate|log.Ltime)
+	} else {
+		r.infoLog = log.New(os.Stdout, "⚉ ", 0)
+	}
 	r.ctx = context.Background()
 
 	cli, err := client.NewClientWithOpts()
@@ -46,11 +50,11 @@ func (r *Runner) run(workflow Workflow) error {
 	r.cli = cli
 	r.imageManager = image_manager.NewImageManager(r.ctx, r.cli, r.infoLog)
 	r.containerManager = container_manager.NewContainerManager(r.ctx, r.cli, r.infoLog)
+	r.shellCommander = shell_commander.NewShellCommander()
 
-	for _, job := range workflow {
+	for _, job := range pipeline.Workflow {
 		r.currentJob = job
 		r.workDir = job.WorkDir
-		r.shellCommander = shell_commander.NewShellCommander()
 
 		if err := r.jobRunner(); err != nil {
 			return err
@@ -184,7 +188,6 @@ func (r *Runner) commandRunner(command string, name string) error {
 		color.Set(color.FgRed)
 		r.infoLog.Printf("Command execution failed")
 
-		r.infoLog.Println("=======================")
 		r.infoLog.Println("Command Log:")
 
 		if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
@@ -193,7 +196,6 @@ func (r *Runner) commandRunner(command string, name string) error {
 			b, _ := ioutil.ReadAll(tr)
 			fmt.Println("\n" + string(b))
 		}
-		r.infoLog.Println("=======================")
 		color.Unset()
 
 		r.cli.ContainerKill(r.ctx, r.container.ID, "KILL")
@@ -218,10 +220,8 @@ func (r *Runner) commandRunner(command string, name string) error {
 
 		if len(b) != 0 {
 			color.Set(color.FgGreen)
-			r.infoLog.Println("=======================")
 			r.infoLog.Println("Command Log:")
 			fmt.Println("\n" + string(b))
-			r.infoLog.Println("=======================")
 			color.Unset()
 		}
 	}

@@ -7,10 +7,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Workflow []Job
+type Pipeline struct {
+	Workflow     []Job
+	LogsWithTime bool
+}
 
-func parse() (Workflow, error) {
-	var workflow Workflow = Workflow{}
+func parse() (Pipeline, error) {
+	var pipeline Pipeline = Pipeline{}
 
 	flows := viper.GetStringSlice("workflow")
 
@@ -20,15 +23,17 @@ func parse() (Workflow, error) {
 		job, err := generateJob(configMap)
 
 		if err != nil {
-			return nil, err
+			return Pipeline{}, err
 		}
 
 		job.Name = v
 
-		workflow = append(workflow, job)
+		pipeline.Workflow = append(pipeline.Workflow, job)
 	}
 
-	return workflow, nil
+	pipeline.LogsWithTime = viper.GetBool("logsWithTime")
+
+	return pipeline, nil
 }
 
 func generateJob(configMap map[string]interface{}) (Job, error) {
@@ -57,10 +62,6 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 	}
 
 	soloExecution := getBool(configMap["soloexecution"])
-
-	if err != nil {
-		return Job{}, err
-	}
 
 	var job Job = Job{
 		Image:         image,
