@@ -6,7 +6,7 @@
 
 # pin 🔥 [<!--lint ignore no-dead-urls-->![GitHub Actions status | sdras/awesome-actions](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)](https://github.com/muhammedikinci/pin/actions/workflows/go.yml)
 
-WIP - Local pipeline command line and web interface project with Docker Golang API.
+WIP - Local pipeline project with Docker Golang API.
 
 ![pingif](asset/pin.gif)
 
