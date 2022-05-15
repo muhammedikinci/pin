@@ -1,5 +1,6 @@
 workflow:
   - testStage
+  - parallelJob
   - run
 
 testStage:
@@ -15,3 +16,11 @@ run:
   soloExecution: true
   script:
     - node index.js
+
+parallelJob:
+  image: node:current-alpine3.15
+  copyFiles: true
+  soloExecution: true
+  parallel: true
+  script:
+    - ls -a

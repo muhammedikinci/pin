@@ -12,9 +12,9 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/muhammedikinci/pin/pkg/container_manager"
@@ -24,23 +24,12 @@ import (
 )
 
 type Runner struct {
-	ctx              context.Context
-	cli              interfaces.Client
-	infoLog          *log.Logger
-	imageManager     interfaces.ImageManager
-	containerManager interfaces.ContainerManager
-	shellCommander   interfaces.ShellCommander
-	container        container.ContainerCreateCreatedBody
+	ctx context.Context
+	cli interfaces.Client
 }
 
 func (r *Runner) run(pipeline Pipeline) error {
-	if pipeline.LogsWithTime {
-		r.infoLog = log.New(os.Stdout, "⚉ ", log.Ldate|log.Ltime)
-	} else {
-		r.infoLog = log.New(os.Stdout, "⚉ ", 0)
-	}
-
-	r.createGlobalContext()
+	r.createGlobalContext(pipeline.Workflow)
 
 	cli, err := client.NewClientWithOpts()
 
@@ -49,13 +38,10 @@ func (r *Runner) run(pipeline Pipeline) error {
 	}
 
 	r.cli = cli
-	r.imageManager = image_manager.NewImageManager(r.cli, r.infoLog)
-	r.containerManager = container_manager.NewContainerManager(r.cli, r.infoLog)
-	r.shellCommander = shell_commander.NewShellCommander()
 
 	for _, job := range pipeline.Workflow {
-		go func(job Job) {
-			r.jobRunner(job)
+		go func(job *Job) {
+			r.jobRunner(job, pipeline.LogsWithTime)
 		}(job)
 	}
 
@@ -64,8 +50,18 @@ func (r *Runner) run(pipeline Pipeline) error {
 	return err
 }
 
-func (r *Runner) jobRunner(currentJob Job) {
-	if currentJob.Previous != nil {
+func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
+	if logsWithTime {
+		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), log.Ldate|log.Ltime)
+	} else {
+		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
+	}
+
+	currentJob.ImageManager = image_manager.NewImageManager(r.cli, currentJob.InfoLog)
+	currentJob.ContainerManager = container_manager.NewContainerManager(r.cli, currentJob.InfoLog)
+	currentJob.ShellCommander = shell_commander.NewShellCommander()
+
+	if currentJob.Previous != nil && !currentJob.IsParallel {
 		previousJobError := <-currentJob.Previous.ErrorChannel
 
 		if previousJobError != nil {
@@ -74,7 +70,7 @@ func (r *Runner) jobRunner(currentJob Job) {
 		}
 	}
 
-	isImageAvailable, err := r.imageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
+	isImageAvailable, err := currentJob.ImageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
 
 	if err != nil {
 		currentJob.ErrorChannel <- err
@@ -82,7 +78,7 @@ func (r *Runner) jobRunner(currentJob Job) {
 	}
 
 	if !isImageAvailable {
-		if err := r.imageManager.PullImage(r.ctx, currentJob.Image); err != nil {
+		if err := currentJob.ImageManager.PullImage(r.ctx, currentJob.Image); err != nil {
 			currentJob.ErrorChannel <- err
 			return
 		}
@@ -94,64 +90,64 @@ func (r *Runner) jobRunner(currentJob Job) {
 		ports[port.Out] = port.In
 	}
 
-	resp, err := r.containerManager.StartContainer(r.ctx, currentJob.Name, currentJob.Image, ports)
+	resp, err := currentJob.ContainerManager.StartContainer(r.ctx, currentJob.Name, currentJob.Image, ports)
 
 	if err != nil {
 		currentJob.ErrorChannel <- err
 		return
 	}
 
-	r.container = resp
+	currentJob.Container = resp
 
 	if currentJob.CopyFiles {
-		if err := r.containerManager.CopyToContainer(r.ctx, resp.ID, currentJob.WorkDir, currentJob.CopyIgnore); err != nil {
+		if err := currentJob.ContainerManager.CopyToContainer(r.ctx, resp.ID, currentJob.WorkDir, currentJob.CopyIgnore); err != nil {
 			currentJob.ErrorChannel <- err
 			return
 		}
 	}
 
 	color.Set(color.FgGreen)
-	r.infoLog.Println("Starting the container")
+	currentJob.InfoLog.Println("Starting the container")
 	color.Unset()
 
-	if err := r.cli.ContainerStart(r.ctx, r.container.ID, types.ContainerStartOptions{}); err != nil {
+	if err := r.cli.ContainerStart(r.ctx, currentJob.Container.ID, types.ContainerStartOptions{}); err != nil {
 		currentJob.ErrorChannel <- err
 		return
 	}
 
-	if err := r.commandScriptExecutor(currentJob); err != nil {
+	if err := r.commandScriptExecutor((*currentJob)); err != nil {
 		currentJob.ErrorChannel <- err
 		return
 	}
 
-	if err := r.containerManager.StopContainer(r.ctx, r.container.ID); err != nil {
+	if err := currentJob.ContainerManager.StopContainer(r.ctx, currentJob.Container.ID); err != nil {
 		currentJob.ErrorChannel <- err
 		return
 	}
 
-	if err := r.containerManager.RemoveContainer(r.ctx, r.container.ID, false); err != nil {
+	if err := currentJob.ContainerManager.RemoveContainer(r.ctx, currentJob.Container.ID, false); err != nil {
 		currentJob.ErrorChannel <- err
 		return
 	}
 
 	color.Set(color.FgGreen)
-	r.infoLog.Println("Job ended")
+	currentJob.InfoLog.Println("Job ended")
 	color.Unset()
 
 	currentJob.ErrorChannel <- nil
 }
 
 func (r Runner) commandScriptExecutor(currentJob Job) error {
-	cmds := r.shellCommander.PrepareShellCommands(currentJob.SoloExecution, currentJob.Script)
+	cmds := currentJob.ShellCommander.PrepareShellCommands(currentJob.SoloExecution, currentJob.Script)
 
 	for _, cmd := range cmds {
-		buf, err := r.shellCommander.ShellToTar(cmd)
+		buf, err := currentJob.ShellCommander.ShellToTar(cmd)
 
 		if err != nil {
 			return err
 		}
 
-		err = r.cli.CopyToContainer(r.ctx, r.container.ID, "/home/", buf, types.CopyToContainerOptions{})
+		err = r.cli.CopyToContainer(r.ctx, currentJob.Container.ID, "/home/", buf, types.CopyToContainerOptions{})
 
 		if err != nil {
 			return err
@@ -179,12 +175,12 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 	if name != "" && currentJob.SoloExecution {
 		lines := strings.Split(name, "\n")
 		name = strings.Join(lines[2:], "\n")
-		r.infoLog.Printf("Execute command: %s", name)
+		currentJob.InfoLog.Printf("Execute command: %s", name)
 	} else if !currentJob.SoloExecution {
-		r.infoLog.Println("soloExecution disabled, shell command started!")
+		currentJob.InfoLog.Println("soloExecution disabled, shell command started!")
 	}
 
-	exec, err := r.cli.ContainerExecCreate(r.ctx, r.container.ID, types.ExecConfig{
+	exec, err := r.cli.ContainerExecCreate(r.ctx, currentJob.Container.ID, types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
@@ -209,11 +205,11 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 
 	if status.ExitCode != 0 {
 		color.Set(color.FgRed)
-		r.infoLog.Printf("Command execution failed")
+		currentJob.InfoLog.Printf("Command execution failed")
 
-		r.infoLog.Println("Command Log:")
+		currentJob.InfoLog.Println("Command Log:")
 
-		if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
+		if reader, _, err := r.cli.CopyFromContainer(r.ctx, currentJob.Container.ID, "/shell_command_output.log"); err == nil {
 			tr := tar.NewReader(reader)
 			tr.Next()
 			b, _ := ioutil.ReadAll(tr)
@@ -221,29 +217,29 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		}
 		color.Unset()
 
-		r.cli.ContainerKill(r.ctx, r.container.ID, "KILL")
+		r.cli.ContainerKill(r.ctx, currentJob.Container.ID, "KILL")
 
-		if err := r.containerManager.StopContainer(r.ctx, r.container.ID); err != nil {
+		if err := currentJob.ContainerManager.StopContainer(r.ctx, currentJob.Container.ID); err != nil {
 			return err
 		}
 
-		if err := r.containerManager.RemoveContainer(r.ctx, r.container.ID, false); err != nil {
+		if err := currentJob.ContainerManager.RemoveContainer(r.ctx, currentJob.Container.ID, false); err != nil {
 			return err
 		}
 
 		return errors.New("command execution failed")
 	}
 
-	r.infoLog.Println("Command execution successful")
+	currentJob.InfoLog.Println("Command execution successful")
 
-	if reader, _, err := r.cli.CopyFromContainer(r.ctx, r.container.ID, "/shell_command_output.log"); err == nil {
+	if reader, _, err := r.cli.CopyFromContainer(r.ctx, currentJob.Container.ID, "/shell_command_output.log"); err == nil {
 		tr := tar.NewReader(reader)
 		tr.Next()
 		b, _ := ioutil.ReadAll(tr)
 
 		if len(b) != 0 {
 			color.Set(color.FgGreen)
-			r.infoLog.Println("Command Log:")
+			currentJob.InfoLog.Println("Command Log:")
 			fmt.Println("\n" + string(b))
 			color.Unset()
 		}
@@ -255,7 +251,7 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 func (r Runner) internalExec(command string, currentJob Job) error {
 	args := strings.Split(command, " ")
 
-	exec, err := r.cli.ContainerExecCreate(r.ctx, r.container.ID, types.ExecConfig{
+	exec, err := r.cli.ContainerExecCreate(r.ctx, currentJob.Container.ID, types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
@@ -281,21 +277,25 @@ func (r Runner) internalExec(command string, currentJob Job) error {
 	return nil
 }
 
-func (r *Runner) createGlobalContext() {
+func (r *Runner) createGlobalContext(jobs []*Job) {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	go func() {
 		<-ctx.Done()
 		color.Set(color.FgHiRed)
-		r.infoLog.Println("System call detected!")
+		fmt.Println("System call detected!")
 		color.Unset()
 		cancel()
 
-		if r.container.ID == "" {
-			return
-		}
+		for _, job := range jobs {
+			if job.Container.ID == "" {
+				continue
+			}
 
-		r.containerManager.RemoveContainer(context.Background(), r.container.ID, true)
+			timedContext, timedCancel := context.WithTimeout(context.Background(), time.Second*3)
+			defer timedCancel()
+			job.ContainerManager.RemoveContainer(timedContext, job.Container.ID, true)
+		}
 	}()
 
 	r.ctx = ctx

@@ -29,7 +29,7 @@ func Apply(name string, filepath string) error {
 	currentRunner := Runner{}
 
 	if err := currentRunner.run(pipeline); err != nil {
-		currentRunner.infoLog.Println(err.Error())
+		fmt.Println(err.Error())
 		return err
 	}
 

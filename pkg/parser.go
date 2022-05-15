@@ -9,7 +9,7 @@ import (
 )
 
 type Pipeline struct {
-	Workflow     []Job
+	Workflow     []*Job
 	LogsWithTime bool
 }
 
@@ -29,8 +29,8 @@ func parse() (Pipeline, error) {
 
 		job.Name = v
 
-		if i > 0 {
-			job.Previous = &pipeline.Workflow[i-1]
+		if i > 0 && (!job.IsParallel || !pipeline.Workflow[i-1].IsParallel) {
+			job.Previous = pipeline.Workflow[i-1]
 		}
 
 		pipeline.Workflow = append(pipeline.Workflow, job)
@@ -41,41 +41,41 @@ func parse() (Pipeline, error) {
 	return pipeline, nil
 }
 
-func generateJob(configMap map[string]interface{}) (Job, error) {
+func generateJob(configMap map[string]interface{}) (*Job, error) {
 	image, err := getJobImage(configMap["image"])
 
 	if err != nil {
-		return Job{}, err
+		return &Job{}, err
 	}
 
 	workDir, err := getWorkDir(configMap["workdir"])
 
 	if err != nil {
-		return Job{}, err
+		return &Job{}, err
 	}
 
 	copyFiles, err := getCopyFiles(configMap["copyfiles"])
 
 	if err != nil {
-		return Job{}, err
+		return &Job{}, err
 	}
 
 	soloExecution := getBool(configMap["soloexecution"], false)
-	removeContainer := getBool(configMap["removecontainer"], true)
+	isParallel := getBool(configMap["parallel"], false)
 	copyIgnore := getStringArray(configMap["copyignore"])
 	script := getStringArray(configMap["script"])
 	port := getJobPort(configMap["port"])
 
-	var job Job = Job{
-		Image:           image,
-		Script:          script,
-		CopyFiles:       copyFiles,
-		WorkDir:         workDir,
-		SoloExecution:   soloExecution,
-		RemoveContainer: removeContainer,
-		Port:            port,
-		CopyIgnore:      copyIgnore,
-		ErrorChannel:    make(chan error, 1),
+	var job *Job = &Job{
+		Image:         image,
+		Script:        script,
+		CopyFiles:     copyFiles,
+		WorkDir:       workDir,
+		SoloExecution: soloExecution,
+		IsParallel:    isParallel,
+		Port:          port,
+		CopyIgnore:    copyIgnore,
+		ErrorChannel:  make(chan error, 1),
 	}
 
 	return job, nil

@@ -169,6 +169,29 @@ helper:
         index.js
 ```
 
+## parallel
+
+default: false
+
+If you want to run parallel job, you must add `parallel` field and the stage must be in workflow(position doesn't matter)
+
+```yaml
+workflow:
+  - testStage
+  - parallelJob
+  - run
+
+...
+
+parallelJob:
+  image: node:current-alpine3.15
+  copyFiles: true
+  soloExecution: true
+  parallel: true
+  script:
+    - ls -a
+```
+
 # Tests
 
 ```sh
@@ -178,7 +201,7 @@ go test ./...
 # Checklist
 
 - Implement web interface
-- Support concurrent jobs
+- Support concurrent jobs ✅[Issue#9](https://github.com/muhammedikinci/pin/issues/9)
 - Add working with remote docker deamon support
 - Change image pulling logs (get only status logs)✅[Issue#1](https://github.com/muhammedikinci/pin/issues/1)
 - Add custom ignore configuration to copyFiles for project files (like gitignore) ✅[Issue#7](https://github.com/muhammedikinci/pin/issues/7)
