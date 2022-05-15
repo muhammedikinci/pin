@@ -12,10 +12,22 @@ WIP - Local pipeline project with Docker Golang API.
 
 # 🌐 Installation 
 
+## Download latest release
+
+You can download latest release from [here](https://github.com/muhammedikinci/pin/releases)
+
+## Install with cloning
+
 Clone the pin
 
 ```sh
 git clone https://github.com/muhammedikinci/pin
+```
+
+Download packages
+
+```sh
+go mod download
 ```
 
 Build executable
