@@ -2,6 +2,7 @@ package pin
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -44,10 +45,16 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		return Job{}, err
 	}
 
-	script, err := getJobScripts(configMap["script"])
+	script, err := getStringArray(configMap["script"])
 
 	if err != nil {
-		return Job{}, err
+		return Job{}, fmt.Errorf("`script` %w", err)
+	}
+
+	copyIgnore, err := getStringArray(configMap["copyignore"])
+
+	if err != nil {
+		return Job{}, fmt.Errorf("`copyIgnore` %w", err)
 	}
 
 	workDir, err := getWorkDir(configMap["workdir"])
@@ -63,7 +70,7 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 	}
 
 	soloExecution := getBool(configMap["soloexecution"], false)
-	removeContainer := getBool(configMap["removeContainer"], true)
+	removeContainer := getBool(configMap["removecontainer"], true)
 	port := getJobPort(configMap["port"])
 
 	var job Job = Job{
@@ -74,6 +81,7 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		SoloExecution:   soloExecution,
 		RemoveContainer: removeContainer,
 		Port:            port,
+		CopyIgnore:      copyIgnore,
 	}
 
 	return job, nil
@@ -87,8 +95,8 @@ func getJobImage(image interface{}) (string, error) {
 	return image.(string), nil
 }
 
-func getJobScripts(script interface{}) ([]string, error) {
-	refVal := reflect.ValueOf(script)
+func getStringArray(stringArray interface{}) ([]string, error) {
+	refVal := reflect.ValueOf(stringArray)
 
 	if refVal.Kind() == reflect.Slice {
 		arr := make([]string, refVal.Len())
@@ -101,10 +109,10 @@ func getJobScripts(script interface{}) ([]string, error) {
 	}
 
 	if refVal.Kind() == reflect.String {
-		return []string{script.(string)}, nil
+		return []string{stringArray.(string)}, nil
 	}
 
-	return nil, errors.New("`script` field is not valid")
+	return nil, errors.New("field is not valid")
 }
 
 func getJobPort(port interface{}) []Port {

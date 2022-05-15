@@ -11,5 +11,5 @@ type ContainerManager interface {
 	StartContainer(ctx context.Context, jobName string, image string, ports map[string]string) (container.ContainerCreateCreatedBody, error)
 	StopContainer(ctx context.Context, containerID string) error
 	RemoveContainer(ctx context.Context, containerID string, forceRemove bool) error
-	CopyToContainer(ctx context.Context, containerID, workDir string) error
+	CopyToContainer(ctx context.Context, containerID, workDir string, copyIgnore []string) error
 }

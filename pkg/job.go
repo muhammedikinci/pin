@@ -9,6 +9,7 @@ type Job struct {
 	Status          int
 	SoloExecution   bool
 	Port            []Port
+	CopyIgnore      []string
 	RemoveContainer bool
 	Next            *Job
 }

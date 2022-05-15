@@ -96,7 +96,7 @@ func (r *Runner) jobRunner() error {
 	r.container = resp
 
 	if r.currentJob.CopyFiles {
-		if err := r.containerManager.CopyToContainer(r.ctx, resp.ID, r.workDir); err != nil {
+		if err := r.containerManager.CopyToContainer(r.ctx, resp.ID, r.workDir, r.currentJob.CopyIgnore); err != nil {
 			return err
 		}
 	}

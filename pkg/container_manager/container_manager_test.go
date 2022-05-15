@@ -212,7 +212,7 @@ func TestAppender(t *testing.T) {
 	cm := containerManager{}
 
 	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
-		return cm.appender(path, info, err, currentPath, tw)
+		return cm.appender(path, info, err, currentPath, tw, []string{"node_modules", "ignore_test1.txt", ".test_point_folder"})
 	})
 
 	assert.Equal(t, err, nil)
@@ -220,6 +220,8 @@ func TestAppender(t *testing.T) {
 	tw.Close()
 
 	tr := tar.NewReader(&buf)
+
+	headerNames := []string{}
 
 	for {
 		header, err := tr.Next()
@@ -232,7 +234,12 @@ func TestAppender(t *testing.T) {
 			break
 		}
 
-		assert.Equal(t, header.Name[0] == '.', false)
-		assert.Equal(t, strings.Contains(header.Name, "node_modules"), false)
+		assert.Equal(t, false, strings.Contains(header.Name, ".test_point_folder"))
+		assert.Equal(t, false, strings.Contains(header.Name, "node_modules"))
+		assert.Equal(t, false, strings.Contains(header.Name, "ignore_test1.txt"))
+
+		headerNames = append(headerNames, header.Name)
 	}
+
+	assert.Contains(t, headerNames, "ignore_test/ignore_test2.py")
 }

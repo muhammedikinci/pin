@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -95,7 +96,7 @@ func (cm containerManager) RemoveContainer(ctx context.Context, containerID stri
 	return nil
 }
 
-func (cm containerManager) CopyToContainer(ctx context.Context, containerID, workDir string) error {
+func (cm containerManager) CopyToContainer(ctx context.Context, containerID, workDir string, copyIgnore []string) error {
 	var buf bytes.Buffer
 
 	tw := tar.NewWriter(&buf)
@@ -104,7 +105,7 @@ func (cm containerManager) CopyToContainer(ctx context.Context, containerID, wor
 	currentPath, _ := os.Getwd()
 
 	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
-		return cm.appender(path, info, err, currentPath, tw)
+		return cm.appender(path, info, err, currentPath, tw, copyIgnore)
 	})
 
 	if err != nil {
@@ -120,13 +121,19 @@ func (cm containerManager) CopyToContainer(ctx context.Context, containerID, wor
 	return nil
 }
 
-func (cm containerManager) appender(path string, info os.FileInfo, err error, currentPath string, tw *tar.Writer) error {
+func (cm containerManager) appender(path string, info os.FileInfo, err error, currentPath string, tw *tar.Writer, copyIgnore []string) error {
 	if err != nil {
 		return err
 	}
 
 	if !info.Mode().IsRegular() {
 		return nil
+	}
+
+	for _, ignore := range copyIgnore {
+		if info.IsDir() && info.Name() == ignore {
+			return filepath.SkipDir
+		}
 	}
 
 	header, err := tar.FileInfoHeader(info, info.Name())
@@ -137,12 +144,10 @@ func (cm containerManager) appender(path string, info os.FileInfo, err error, cu
 	header.Name = strings.TrimPrefix(strings.Replace(path, currentPath, "", -1), string(filepath.Separator))
 	header.Name = strings.ReplaceAll(header.Name, "\\", "/")
 
-	if header.Name[0] == '.' {
-		return nil
-	}
-
-	if strings.Contains(header.Name, "node_modules") {
-		return nil
+	for _, ignore := range copyIgnore {
+		if mathced, err := regexp.MatchString(ignore, header.Name); err != nil || mathced {
+			return nil
+		}
 	}
 
 	if err := tw.WriteHeader(header); err != nil {

@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -34,30 +35,30 @@ func (m *MockImageManager) EXPECT() *MockImageManagerMockRecorder {
 }
 
 // CheckTheImageAvailable mocks base method.
-func (m *MockImageManager) CheckTheImageAvailable(image string) (bool, error) {
+func (m *MockImageManager) CheckTheImageAvailable(ctx context.Context, image string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckTheImageAvailable", image)
+	ret := m.ctrl.Call(m, "CheckTheImageAvailable", ctx, image)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CheckTheImageAvailable indicates an expected call of CheckTheImageAvailable.
-func (mr *MockImageManagerMockRecorder) CheckTheImageAvailable(image interface{}) *gomock.Call {
+func (mr *MockImageManagerMockRecorder) CheckTheImageAvailable(ctx, image interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckTheImageAvailable", reflect.TypeOf((*MockImageManager)(nil).CheckTheImageAvailable), image)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckTheImageAvailable", reflect.TypeOf((*MockImageManager)(nil).CheckTheImageAvailable), ctx, image)
 }
 
 // PullImage mocks base method.
-func (m *MockImageManager) PullImage(image string) error {
+func (m *MockImageManager) PullImage(ctx context.Context, image string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PullImage", image)
+	ret := m.ctrl.Call(m, "PullImage", ctx, image)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // PullImage indicates an expected call of PullImage.
-func (mr *MockImageManagerMockRecorder) PullImage(image interface{}) *gomock.Call {
+func (mr *MockImageManagerMockRecorder) PullImage(ctx, image interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullImage", reflect.TypeOf((*MockImageManager)(nil).PullImage), image)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PullImage", reflect.TypeOf((*MockImageManager)(nil).PullImage), ctx, image)
 }

@@ -36,17 +36,17 @@ func (m *MockContainerManager) EXPECT() *MockContainerManagerMockRecorder {
 }
 
 // CopyToContainer mocks base method.
-func (m *MockContainerManager) CopyToContainer(ctx context.Context, containerID, workDir string) error {
+func (m *MockContainerManager) CopyToContainer(ctx context.Context, containerID, workDir string, copyIgnore []string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CopyToContainer", ctx, containerID, workDir)
+	ret := m.ctrl.Call(m, "CopyToContainer", ctx, containerID, workDir, copyIgnore)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CopyToContainer indicates an expected call of CopyToContainer.
-func (mr *MockContainerManagerMockRecorder) CopyToContainer(ctx, containerID, workDir interface{}) *gomock.Call {
+func (mr *MockContainerManagerMockRecorder) CopyToContainer(ctx, containerID, workDir, copyIgnore interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyToContainer", reflect.TypeOf((*MockContainerManager)(nil).CopyToContainer), ctx, containerID, workDir)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyToContainer", reflect.TypeOf((*MockContainerManager)(nil).CopyToContainer), ctx, containerID, workDir, copyIgnore)
 }
 
 // RemoveContainer mocks base method.

@@ -124,6 +124,51 @@ You can use this feature for port forwarding from container to your machine with
     - 8083:8080
 ```
 
+## copyIgnore
+
+default: empty mapping
+
+You can use this feature to ignore copying the specific files in your project to the container.
+
+Sample configuration yaml
+```yaml
+run:
+  image: node:current-alpine3.15
+  copyFiles: true
+  soloExecution: true
+  port:
+    - 8080:8080
+  copyIgnore:
+    - server.js
+    - props
+    - README.md
+    - helper/.*/.py
+```
+
+Actual folder structure in project
+```yaml
+index.js
+server.js
+README.md
+helper:
+    - test.py
+    - mock
+        test2.py
+    - api:
+        index.js
+    - props:
+        index.js
+```
+
+Folder structure in container
+```yaml
+index.js
+helper:
+    - mock (empty)
+    - api:
+        index.js
+```
+
 # Tests
 
 ```sh
@@ -136,7 +181,7 @@ go test ./...
 - Support concurrent jobs
 - Add working with remote docker deamon support
 - Change image pulling logs (get only status logs)✅[Issue#1](https://github.com/muhammedikinci/pin/issues/1)
-- Add custom ignore configuration to copyFiles for project files (like gitignore)
+- Add custom ignore configuration to copyFiles for project files (like gitignore) ✅[Issue#7](https://github.com/muhammedikinci/pin/issues/7)
 - Add shared artifacts support between different jobs 
 - Add timestamp to container names ✅[Issue#2](https://github.com/muhammedikinci/pin/issues/2)
 - Create small pieces with extracting codes from runner struct and write unit test:
