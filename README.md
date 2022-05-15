@@ -64,15 +64,13 @@ run:
     - 8082:8080
 ```
 
-You can create separate jobs like the `run` stage and if you want to run these jobs in the pipeline you must add its name to `workflow`. Jobs only work serialized for now.
+You can create separate jobs like the `run` stage and if you want to run these jobs in the pipeline you must add its name to `workflow`.
 
 ## copyFiles
 
 default: false
 
 If you want to copy all projects filed to the docker container, you must set this configuration to `true`
-
-custom folder ignore doesn't support yet!
 
 ## soloExecution
 
