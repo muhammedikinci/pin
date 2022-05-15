@@ -33,12 +33,11 @@ func TestWhenImageListReturnAnyErrorCheckTheImageAvailableMustReturnFalseAndCliE
 		Return(mimages, merr)
 
 	im := imageManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	check, err := im.CheckTheImageAvailable("test")
+	check, err := im.CheckTheImageAvailable(context.Background(), "test")
 
 	assert.Equal(t, err, merr)
 	assert.Equal(t, check, false)
@@ -64,12 +63,11 @@ func TestWhenCheckTheImageAvailableCallsWithDoesntExistImageMustReturnFalseAndNi
 		Return(mimages, nil)
 
 	im := imageManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	check, err := im.CheckTheImageAvailable("test")
+	check, err := im.CheckTheImageAvailable(context.Background(), "test")
 
 	assert.Equal(t, err, nil)
 	assert.Equal(t, check, false)
@@ -99,12 +97,11 @@ func TestWhenCheckTheImageAvailableCallsWithExistImageMustReturnTrueAndNilError(
 		Times(1)
 
 	im := imageManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	check, err := im.CheckTheImageAvailable("image1")
+	check, err := im.CheckTheImageAvailable(context.Background(), "image1")
 
 	assert.Equal(t, err, nil)
 	assert.Equal(t, check, true)
@@ -135,12 +132,11 @@ func TestWhenClientImagePullFunctionReturnAnErrorPullImageMustReturnTheSameError
 		Times(1)
 
 	im := imageManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := im.PullImage(mimage)
+	err := im.PullImage(context.Background(), mimage)
 
 	assert.Equal(t, err, merr)
 }
@@ -174,12 +170,11 @@ func TestWhenClientImagePullFunctionReturnUnexpectedStreamPullImageMustReturnThe
 		Times(1)
 
 	im := imageManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := im.PullImage(mimage)
+	err := im.PullImage(context.Background(), mimage)
 
 	var want *json.SyntaxError
 
@@ -214,12 +209,11 @@ func TestWhenClientImagePullFunctionReturnSuccessfulStreamPullImageMustReturnNil
 		Times(1)
 
 	im := imageManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := im.PullImage(mimage)
+	err := im.PullImage(context.Background(), mimage)
 
 	assert.Equal(t, err, nil)
 }

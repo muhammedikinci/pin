@@ -39,6 +39,10 @@ func (r *Runner) run(pipeline Pipeline) error {
 	} else {
 		r.infoLog = log.New(os.Stdout, "⚉ ", 0)
 	}
+
+	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	// defer cancel()
+
 	r.ctx = context.Background()
 
 	cli, err := client.NewClientWithOpts()
@@ -48,8 +52,8 @@ func (r *Runner) run(pipeline Pipeline) error {
 	}
 
 	r.cli = cli
-	r.imageManager = image_manager.NewImageManager(r.ctx, r.cli, r.infoLog)
-	r.containerManager = container_manager.NewContainerManager(r.ctx, r.cli, r.infoLog)
+	r.imageManager = image_manager.NewImageManager(r.cli, r.infoLog)
+	r.containerManager = container_manager.NewContainerManager(r.cli, r.infoLog)
 	r.shellCommander = shell_commander.NewShellCommander()
 
 	for _, job := range pipeline.Workflow {
@@ -65,19 +69,25 @@ func (r *Runner) run(pipeline Pipeline) error {
 }
 
 func (r *Runner) jobRunner() error {
-	isImageAvailable, err := r.imageManager.CheckTheImageAvailable(r.currentJob.Image)
+	isImageAvailable, err := r.imageManager.CheckTheImageAvailable(r.ctx, r.currentJob.Image)
 
 	if err != nil {
 		return err
 	}
 
 	if !isImageAvailable {
-		if err := r.imageManager.PullImage(r.currentJob.Image); err != nil {
+		if err := r.imageManager.PullImage(r.ctx, r.currentJob.Image); err != nil {
 			return err
 		}
 	}
 
-	resp, err := r.containerManager.StartContainer(r.currentJob.Name, r.currentJob.Image)
+	ports := map[string]string{}
+
+	for _, port := range r.currentJob.Port {
+		ports[port.Out] = port.In
+	}
+
+	resp, err := r.containerManager.StartContainer(r.ctx, r.currentJob.Name, r.currentJob.Image, ports)
 
 	if err != nil {
 		return err
@@ -86,7 +96,7 @@ func (r *Runner) jobRunner() error {
 	r.container = resp
 
 	if r.currentJob.CopyFiles {
-		if err := r.containerManager.CopyToContainer(resp.ID, r.workDir); err != nil {
+		if err := r.containerManager.CopyToContainer(r.ctx, resp.ID, r.workDir); err != nil {
 			return err
 		}
 	}
@@ -103,11 +113,11 @@ func (r *Runner) jobRunner() error {
 		return err
 	}
 
-	if err := r.containerManager.StopContainer(r.container.ID); err != nil {
+	if err := r.containerManager.StopContainer(r.ctx, r.container.ID); err != nil {
 		return err
 	}
 
-	if err := r.containerManager.RemoveContainer(r.container.ID); err != nil {
+	if err := r.containerManager.RemoveContainer(r.ctx, r.container.ID, false); err != nil {
 		return err
 	}
 
@@ -200,11 +210,11 @@ func (r *Runner) commandRunner(command string, name string) error {
 
 		r.cli.ContainerKill(r.ctx, r.container.ID, "KILL")
 
-		if err := r.containerManager.StopContainer(r.container.ID); err != nil {
+		if err := r.containerManager.StopContainer(r.ctx, r.container.ID); err != nil {
 			return err
 		}
 
-		if err := r.containerManager.RemoveContainer(r.container.ID); err != nil {
+		if err := r.containerManager.RemoveContainer(r.ctx, r.container.ID, false); err != nil {
 			return err
 		}
 

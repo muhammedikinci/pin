@@ -28,7 +28,7 @@ func Apply(name string, filepath string) error {
 	currentRunner := Runner{}
 
 	if err := currentRunner.run(pipeline); err != nil {
-		fmt.Println(err)
+		currentRunner.infoLog.Println(err.Error())
 		return err
 	}
 

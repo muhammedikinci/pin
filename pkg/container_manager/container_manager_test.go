@@ -39,12 +39,11 @@ func TestWhenContainerCreateReturnErrorStartContainerMustReturnSameError(t *test
 		Return(container.ContainerCreateCreatedBody{}, merror)
 
 	cm := containerManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	resp, err := cm.StartContainer("", "")
+	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{})
 
 	assert.Equal(t, resp, container.ContainerCreateCreatedBody{})
 	assert.Equal(t, err, merror)
@@ -72,12 +71,11 @@ func TestWhenContainerCreateReturnResponseStartContainerMustSameResponseWithNilE
 		Return(mres, nil)
 
 	cm := containerManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	resp, err := cm.StartContainer("", "")
+	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{})
 
 	assert.Equal(t, resp.ID, mres.ID)
 	assert.Equal(t, err, nil)
@@ -103,12 +101,11 @@ func TestWhenContainerStopReturnErrorStopContainerMustReturnSameError(t *testing
 		Return(merror)
 
 	cm := containerManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := cm.StopContainer("")
+	err := cm.StopContainer(context.Background(), "")
 
 	assert.Equal(t, err, merror)
 }
@@ -135,12 +132,11 @@ func TestWhenContainerStopReturnNilStopContainerMustReturnNil(t *testing.T) {
 		Return(nil)
 
 	cm := containerManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := cm.StopContainer("")
+	err := cm.StopContainer(context.Background(), "")
 
 	assert.Equal(t, err, nil)
 }
@@ -165,12 +161,11 @@ func TestWhenRemoveContainerReturnErrorStopContainerMustReturnSameError(t *testi
 		Return(merror)
 
 	cm := containerManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := cm.RemoveContainer("")
+	err := cm.RemoveContainer(context.Background(), "", false)
 
 	assert.Equal(t, err, merror)
 }
@@ -197,12 +192,11 @@ func TestWhenContainerRemoveReturnNilRemoveContainerMustReturnNil(t *testing.T) 
 		Return(nil)
 
 	cm := containerManager{
-		ctx: context.Background(),
 		cli: mockCli,
 		log: mockLog,
 	}
 
-	err := cm.RemoveContainer("")
+	err := cm.RemoveContainer(context.Background(), "", false)
 
 	assert.Equal(t, err, nil)
 }

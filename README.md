@@ -48,6 +48,8 @@ run:
     - go mod download
     - go run .
     - ls
+  port:
+    - 8082:8080
 ```
 
 You can create separate jobs like the `run` stage and if you want to run these jobs in the pipeline you must add its name to `workflow`. Jobs only work serialized for now.
@@ -110,6 +112,18 @@ logsWithTime => false
 ⚉ Execute command: ls -a
 ```
 
+## port
+
+default: empty mapping
+
+You can use this feature for port forwarding from container to your machine with multiple mapping
+
+```yaml
+  port:
+    - 8082:8080
+    - 8083:8080
+```
+
 # Tests
 
 ```sh
@@ -131,7 +145,10 @@ go test ./...
   - Shell Commander ✅[Issue#5](https://github.com/muhammedikinci/pin/issues/5)
   - Parser
   - Runner
-- Add port expose support
+- Add port expose support ✅[Issue#6](https://github.com/muhammedikinci/pin/issues/6)
+- Support long living containers
+- Add concurrency between jobs
+- Add graceful shutdown with context 
 
 # Contact
 

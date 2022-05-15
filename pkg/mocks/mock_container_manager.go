@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	container "github.com/docker/docker/api/types/container"
@@ -35,58 +36,58 @@ func (m *MockContainerManager) EXPECT() *MockContainerManagerMockRecorder {
 }
 
 // CopyToContainer mocks base method.
-func (m *MockContainerManager) CopyToContainer(containerID, workDir string) error {
+func (m *MockContainerManager) CopyToContainer(ctx context.Context, containerID, workDir string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CopyToContainer", containerID, workDir)
+	ret := m.ctrl.Call(m, "CopyToContainer", ctx, containerID, workDir)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CopyToContainer indicates an expected call of CopyToContainer.
-func (mr *MockContainerManagerMockRecorder) CopyToContainer(containerID, workDir interface{}) *gomock.Call {
+func (mr *MockContainerManagerMockRecorder) CopyToContainer(ctx, containerID, workDir interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyToContainer", reflect.TypeOf((*MockContainerManager)(nil).CopyToContainer), containerID, workDir)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyToContainer", reflect.TypeOf((*MockContainerManager)(nil).CopyToContainer), ctx, containerID, workDir)
 }
 
 // RemoveContainer mocks base method.
-func (m *MockContainerManager) RemoveContainer(containerID string) error {
+func (m *MockContainerManager) RemoveContainer(ctx context.Context, containerID string, forceRemove bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RemoveContainer", containerID)
+	ret := m.ctrl.Call(m, "RemoveContainer", ctx, containerID, forceRemove)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RemoveContainer indicates an expected call of RemoveContainer.
-func (mr *MockContainerManagerMockRecorder) RemoveContainer(containerID interface{}) *gomock.Call {
+func (mr *MockContainerManagerMockRecorder) RemoveContainer(ctx, containerID, forceRemove interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveContainer", reflect.TypeOf((*MockContainerManager)(nil).RemoveContainer), containerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveContainer", reflect.TypeOf((*MockContainerManager)(nil).RemoveContainer), ctx, containerID, forceRemove)
 }
 
 // StartContainer mocks base method.
-func (m *MockContainerManager) StartContainer(jobName, image string) (container.ContainerCreateCreatedBody, error) {
+func (m *MockContainerManager) StartContainer(ctx context.Context, jobName, image string, ports map[string]string) (container.ContainerCreateCreatedBody, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartContainer", jobName, image)
+	ret := m.ctrl.Call(m, "StartContainer", ctx, jobName, image, ports)
 	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StartContainer indicates an expected call of StartContainer.
-func (mr *MockContainerManagerMockRecorder) StartContainer(jobName, image interface{}) *gomock.Call {
+func (mr *MockContainerManagerMockRecorder) StartContainer(ctx, jobName, image, ports interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartContainer", reflect.TypeOf((*MockContainerManager)(nil).StartContainer), jobName, image)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartContainer", reflect.TypeOf((*MockContainerManager)(nil).StartContainer), ctx, jobName, image, ports)
 }
 
 // StopContainer mocks base method.
-func (m *MockContainerManager) StopContainer(containerID string) error {
+func (m *MockContainerManager) StopContainer(ctx context.Context, containerID string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StopContainer", containerID)
+	ret := m.ctrl.Call(m, "StopContainer", ctx, containerID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // StopContainer indicates an expected call of StopContainer.
-func (mr *MockContainerManagerMockRecorder) StopContainer(containerID interface{}) *gomock.Call {
+func (mr *MockContainerManagerMockRecorder) StopContainer(ctx, containerID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopContainer", reflect.TypeOf((*MockContainerManager)(nil).StopContainer), containerID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopContainer", reflect.TypeOf((*MockContainerManager)(nil).StopContainer), ctx, containerID)
 }

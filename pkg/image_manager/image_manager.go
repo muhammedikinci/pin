@@ -13,16 +13,14 @@ import (
 	"github.com/muhammedikinci/pin/pkg/interfaces"
 )
 
-func NewImageManager(ctx context.Context, cli interfaces.Client, log interfaces.Log) imageManager {
+func NewImageManager(cli interfaces.Client, log interfaces.Log) imageManager {
 	return imageManager{
-		ctx: ctx,
 		cli: cli,
 		log: log,
 	}
 }
 
 type imageManager struct {
-	ctx context.Context
 	cli interfaces.Client
 	log interfaces.Log
 }
@@ -32,8 +30,8 @@ type imagePullingResult struct {
 	Progress string `json:"progress"`
 }
 
-func (im imageManager) CheckTheImageAvailable(image string) (bool, error) {
-	images, err := im.cli.ImageList(im.ctx, types.ImageListOptions{})
+func (im imageManager) CheckTheImageAvailable(ctx context.Context, image string) (bool, error) {
+	images, err := im.cli.ImageList(ctx, types.ImageListOptions{})
 
 	if err != nil {
 		return false, err
@@ -51,14 +49,14 @@ func (im imageManager) CheckTheImageAvailable(image string) (bool, error) {
 	return false, nil
 }
 
-func (im imageManager) PullImage(image string) error {
+func (im imageManager) PullImage(ctx context.Context, image string) error {
 	color.Set(color.FgBlue)
 	im.log.Printf("Image pulling: %s", image)
 	color.Unset()
 
 	im.log.Println("Waiting for docker response...")
 
-	reader, err := im.cli.ImagePull(im.ctx, image, types.ImagePullOptions{})
+	reader, err := im.cli.ImagePull(ctx, image, types.ImagePullOptions{})
 
 	if err != nil {
 		return err

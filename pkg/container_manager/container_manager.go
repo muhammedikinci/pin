@@ -13,35 +13,52 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/fatih/color"
 	"github.com/muhammedikinci/pin/pkg/interfaces"
 )
 
 type containerManager struct {
-	ctx context.Context
 	cli interfaces.Client
 	log interfaces.Log
 }
 
-func NewContainerManager(ctx context.Context, cli interfaces.Client, log interfaces.Log) containerManager {
+func NewContainerManager(cli interfaces.Client, log interfaces.Log) containerManager {
 	return containerManager{
-		ctx: ctx,
 		cli: cli,
 		log: log,
 	}
 }
 
-func (cm containerManager) StartContainer(jobName string, image string) (container.ContainerCreateCreatedBody, error) {
+func (cm containerManager) StartContainer(ctx context.Context, jobName string, image string, ports map[string]string) (container.ContainerCreateCreatedBody, error) {
 	color.Set(color.FgGreen)
 	cm.log.Println("Start creating container")
 	color.Unset()
 
 	containerName := jobName + "_" + strconv.Itoa(int(time.Now().UnixMilli()))
 
-	resp, err := cm.cli.ContainerCreate(cm.ctx, &container.Config{
-		Image: image,
-		Tty:   true,
-	}, nil, nil, nil, containerName)
+	portBindings := nat.PortMap{}
+	exposedPorts := nat.PortSet{}
+
+	for out, in := range ports {
+		inPort, _ := nat.NewPort("tcp", in)
+
+		if _, ok := portBindings[inPort]; ok {
+			portBindings[inPort] = append(portBindings[inPort], nat.PortBinding{HostIP: "0.0.0.0", HostPort: out})
+		} else {
+			portBindings[inPort] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: out}}
+		}
+
+		exposedPorts[inPort] = struct{}{}
+	}
+
+	hostConfig := &container.HostConfig{PortBindings: portBindings}
+
+	resp, err := cm.cli.ContainerCreate(ctx, &container.Config{
+		Image:        image,
+		Tty:          true,
+		ExposedPorts: exposedPorts,
+	}, hostConfig, nil, nil, containerName)
 
 	if err != nil {
 		return container.ContainerCreateCreatedBody{}, err
@@ -50,11 +67,11 @@ func (cm containerManager) StartContainer(jobName string, image string) (contain
 	return resp, nil
 }
 
-func (cm containerManager) StopContainer(containerID string) error {
+func (cm containerManager) StopContainer(ctx context.Context, containerID string) error {
 	color.Set(color.FgBlue)
 	cm.log.Println("Container stopping")
 
-	if err := cm.cli.ContainerStop(cm.ctx, containerID, nil); err != nil {
+	if err := cm.cli.ContainerStop(ctx, containerID, nil); err != nil {
 		return err
 	}
 
@@ -64,11 +81,11 @@ func (cm containerManager) StopContainer(containerID string) error {
 	return nil
 }
 
-func (cm containerManager) RemoveContainer(containerID string) error {
+func (cm containerManager) RemoveContainer(ctx context.Context, containerID string, forceRemove bool) error {
 	color.Set(color.FgBlue)
 	cm.log.Println("Container removing")
 
-	if err := cm.cli.ContainerRemove(cm.ctx, containerID, types.ContainerRemoveOptions{}); err != nil {
+	if err := cm.cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{Force: forceRemove}); err != nil {
 		return err
 	}
 
@@ -78,7 +95,7 @@ func (cm containerManager) RemoveContainer(containerID string) error {
 	return nil
 }
 
-func (cm containerManager) CopyToContainer(containerID, workDir string) error {
+func (cm containerManager) CopyToContainer(ctx context.Context, containerID, workDir string) error {
 	var buf bytes.Buffer
 
 	tw := tar.NewWriter(&buf)
@@ -94,7 +111,7 @@ func (cm containerManager) CopyToContainer(containerID, workDir string) error {
 		return err
 	}
 
-	err = cm.cli.CopyToContainer(cm.ctx, containerID, workDir, &buf, types.CopyToContainerOptions{})
+	err = cm.cli.CopyToContainer(ctx, containerID, workDir, &buf, types.CopyToContainerOptions{})
 
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ package pin
 import (
 	"errors"
 	"reflect"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -61,14 +62,18 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		return Job{}, err
 	}
 
-	soloExecution := getBool(configMap["soloexecution"])
+	soloExecution := getBool(configMap["soloexecution"], false)
+	removeContainer := getBool(configMap["removeContainer"], true)
+	port := getJobPort(configMap["port"])
 
 	var job Job = Job{
-		Image:         image,
-		Script:        script,
-		CopyFiles:     copyFiles,
-		WorkDir:       workDir,
-		SoloExecution: soloExecution,
+		Image:           image,
+		Script:          script,
+		CopyFiles:       copyFiles,
+		WorkDir:         workDir,
+		SoloExecution:   soloExecution,
+		RemoveContainer: removeContainer,
+		Port:            port,
 	}
 
 	return job, nil
@@ -102,6 +107,30 @@ func getJobScripts(script interface{}) ([]string, error) {
 	return nil, errors.New("`script` field is not valid")
 }
 
+func getJobPort(port interface{}) []Port {
+	refVal := reflect.ValueOf(port)
+
+	if refVal.Kind() == reflect.Slice {
+		arr := make([]Port, refVal.Len())
+
+		for i := 0; i < refVal.Len(); i++ {
+			line := refVal.Index(i).Interface().(string)
+			ports := strings.Split(line, ":")
+			arr[i] = Port{Out: ports[0], In: ports[1]}
+		}
+
+		return arr
+	}
+
+	if refVal.Kind() == reflect.String {
+		line := port.(string)
+		ports := strings.Split(line, ":")
+		return []Port{{Out: ports[0], In: ports[1]}}
+	}
+
+	return []Port{}
+}
+
 func getWorkDir(workDir interface{}) (string, error) {
 	if workDir == nil {
 		return "/root", nil
@@ -118,9 +147,9 @@ func getCopyFiles(copyFiles interface{}) (bool, error) {
 	return copyFiles.(bool), nil
 }
 
-func getBool(val interface{}) bool {
+func getBool(val interface{}, defaultValue bool) bool {
 	if val == nil {
-		return false
+		return defaultValue
 	}
 
 	return val.(bool)
