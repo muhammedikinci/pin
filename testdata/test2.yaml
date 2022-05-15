@@ -1,0 +1,17 @@
+workflow:
+  - testStage
+  - run
+
+testStage:
+  image: node:current-alpine3.15
+  copyFiles: true
+  soloExecution: true
+  script:
+    - node -v
+
+run:
+  image: node:current-alpine3.15
+  copyFiles: true
+  soloExecution: true
+  script:
+    - node index.js

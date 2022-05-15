@@ -9,7 +9,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -24,8 +26,6 @@ import (
 type Runner struct {
 	ctx              context.Context
 	cli              interfaces.Client
-	currentJob       Job
-	workDir          string
 	infoLog          *log.Logger
 	imageManager     interfaces.ImageManager
 	containerManager interfaces.ContainerManager
@@ -40,10 +40,7 @@ func (r *Runner) run(pipeline Pipeline) error {
 		r.infoLog = log.New(os.Stdout, "⚉ ", 0)
 	}
 
-	// ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	// defer cancel()
-
-	r.ctx = context.Background()
+	r.createGlobalContext()
 
 	cli, err := client.NewClientWithOpts()
 
@@ -57,47 +54,59 @@ func (r *Runner) run(pipeline Pipeline) error {
 	r.shellCommander = shell_commander.NewShellCommander()
 
 	for _, job := range pipeline.Workflow {
-		r.currentJob = job
-		r.workDir = job.WorkDir
+		go func(job Job) {
+			r.jobRunner(job)
+		}(job)
+	}
 
-		if err := r.jobRunner(); err != nil {
-			return err
+	err = <-pipeline.Workflow[len(pipeline.Workflow)-1].ErrorChannel
+
+	return err
+}
+
+func (r *Runner) jobRunner(currentJob Job) {
+	if currentJob.Previous != nil {
+		previousJobError := <-currentJob.Previous.ErrorChannel
+
+		if previousJobError != nil {
+			currentJob.ErrorChannel <- nil
+			return
 		}
 	}
 
-	return nil
-}
-
-func (r *Runner) jobRunner() error {
-	isImageAvailable, err := r.imageManager.CheckTheImageAvailable(r.ctx, r.currentJob.Image)
+	isImageAvailable, err := r.imageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
 
 	if err != nil {
-		return err
+		currentJob.ErrorChannel <- err
+		return
 	}
 
 	if !isImageAvailable {
-		if err := r.imageManager.PullImage(r.ctx, r.currentJob.Image); err != nil {
-			return err
+		if err := r.imageManager.PullImage(r.ctx, currentJob.Image); err != nil {
+			currentJob.ErrorChannel <- err
+			return
 		}
 	}
 
 	ports := map[string]string{}
 
-	for _, port := range r.currentJob.Port {
+	for _, port := range currentJob.Port {
 		ports[port.Out] = port.In
 	}
 
-	resp, err := r.containerManager.StartContainer(r.ctx, r.currentJob.Name, r.currentJob.Image, ports)
+	resp, err := r.containerManager.StartContainer(r.ctx, currentJob.Name, currentJob.Image, ports)
 
 	if err != nil {
-		return err
+		currentJob.ErrorChannel <- err
+		return
 	}
 
 	r.container = resp
 
-	if r.currentJob.CopyFiles {
-		if err := r.containerManager.CopyToContainer(r.ctx, resp.ID, r.workDir, r.currentJob.CopyIgnore); err != nil {
-			return err
+	if currentJob.CopyFiles {
+		if err := r.containerManager.CopyToContainer(r.ctx, resp.ID, currentJob.WorkDir, currentJob.CopyIgnore); err != nil {
+			currentJob.ErrorChannel <- err
+			return
 		}
 	}
 
@@ -106,30 +115,34 @@ func (r *Runner) jobRunner() error {
 	color.Unset()
 
 	if err := r.cli.ContainerStart(r.ctx, r.container.ID, types.ContainerStartOptions{}); err != nil {
-		return err
+		currentJob.ErrorChannel <- err
+		return
 	}
 
-	if err := r.commandScriptExecutor(); err != nil {
-		return err
+	if err := r.commandScriptExecutor(currentJob); err != nil {
+		currentJob.ErrorChannel <- err
+		return
 	}
 
 	if err := r.containerManager.StopContainer(r.ctx, r.container.ID); err != nil {
-		return err
+		currentJob.ErrorChannel <- err
+		return
 	}
 
 	if err := r.containerManager.RemoveContainer(r.ctx, r.container.ID, false); err != nil {
-		return err
+		currentJob.ErrorChannel <- err
+		return
 	}
 
 	color.Set(color.FgGreen)
 	r.infoLog.Println("Job ended")
 	color.Unset()
 
-	return nil
+	currentJob.ErrorChannel <- nil
 }
 
-func (r *Runner) commandScriptExecutor() error {
-	cmds := r.shellCommander.PrepareShellCommands(r.currentJob.SoloExecution, r.currentJob.Script)
+func (r Runner) commandScriptExecutor(currentJob Job) error {
+	cmds := r.shellCommander.PrepareShellCommands(currentJob.SoloExecution, currentJob.Script)
 
 	for _, cmd := range cmds {
 		buf, err := r.shellCommander.ShellToTar(cmd)
@@ -144,15 +157,15 @@ func (r *Runner) commandScriptExecutor() error {
 			return err
 		}
 
-		if err := r.internalExec("chmod +x /home/shell_command.sh"); err != nil {
+		if err := r.internalExec("chmod +x /home/shell_command.sh", currentJob); err != nil {
 			return err
 		}
 
-		if err := r.commandRunner("sh /home/shell_command.sh", cmd); err != nil {
+		if err := r.commandRunner("sh /home/shell_command.sh", cmd, currentJob); err != nil {
 			return err
 		}
 
-		if err := r.internalExec("rm /home/shell_command.sh"); err != nil {
+		if err := r.internalExec("rm /home/shell_command.sh", currentJob); err != nil {
 			return err
 		}
 	}
@@ -160,14 +173,14 @@ func (r *Runner) commandScriptExecutor() error {
 	return nil
 }
 
-func (r *Runner) commandRunner(command string, name string) error {
+func (r Runner) commandRunner(command string, name string, currentJob Job) error {
 	args := strings.Split(command, " ")
 
-	if name != "" && r.currentJob.SoloExecution {
+	if name != "" && currentJob.SoloExecution {
 		lines := strings.Split(name, "\n")
 		name = strings.Join(lines[2:], "\n")
 		r.infoLog.Printf("Execute command: %s", name)
-	} else if !r.currentJob.SoloExecution {
+	} else if !currentJob.SoloExecution {
 		r.infoLog.Println("soloExecution disabled, shell command started!")
 	}
 
@@ -175,7 +188,7 @@ func (r *Runner) commandRunner(command string, name string) error {
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
-		WorkingDir:   r.workDir,
+		WorkingDir:   currentJob.WorkDir,
 	})
 
 	if err != nil {
@@ -239,14 +252,14 @@ func (r *Runner) commandRunner(command string, name string) error {
 	return nil
 }
 
-func (r Runner) internalExec(command string) error {
+func (r Runner) internalExec(command string, currentJob Job) error {
 	args := strings.Split(command, " ")
 
 	exec, err := r.cli.ContainerExecCreate(r.ctx, r.container.ID, types.ExecConfig{
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
-		WorkingDir:   r.workDir,
+		WorkingDir:   currentJob.WorkDir,
 	})
 
 	if err != nil {
@@ -266,4 +279,24 @@ func (r Runner) internalExec(command string) error {
 	}
 
 	return nil
+}
+
+func (r *Runner) createGlobalContext() {
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-ctx.Done()
+		color.Set(color.FgHiRed)
+		r.infoLog.Println("System call detected!")
+		color.Unset()
+		cancel()
+
+		if r.container.ID == "" {
+			return
+		}
+
+		r.containerManager.RemoveContainer(context.Background(), r.container.ID, true)
+	}()
+
+	r.ctx = ctx
 }

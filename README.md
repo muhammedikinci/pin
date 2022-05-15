@@ -192,8 +192,7 @@ go test ./...
   - Runner
 - Add port expose support ✅[Issue#6](https://github.com/muhammedikinci/pin/issues/6)
 - Support long living containers
-- Add concurrency between jobs
-- Add graceful shutdown with context 
+- Add concurrency between jobs and graceful shutdown with global context ✅[Issue#8](https://github.com/muhammedikinci/pin/issues/8)
 
 # Contact
 

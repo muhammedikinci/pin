@@ -2,7 +2,6 @@ package pin
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 	"strings"
 
@@ -19,7 +18,7 @@ func parse() (Pipeline, error) {
 
 	flows := viper.GetStringSlice("workflow")
 
-	for _, v := range flows {
+	for i, v := range flows {
 		configMap := viper.GetStringMap(v)
 
 		job, err := generateJob(configMap)
@@ -29,6 +28,10 @@ func parse() (Pipeline, error) {
 		}
 
 		job.Name = v
+
+		if i > 0 {
+			job.Previous = &pipeline.Workflow[i-1]
+		}
 
 		pipeline.Workflow = append(pipeline.Workflow, job)
 	}
@@ -45,18 +48,6 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		return Job{}, err
 	}
 
-	script, err := getStringArray(configMap["script"])
-
-	if err != nil {
-		return Job{}, fmt.Errorf("`script` %w", err)
-	}
-
-	copyIgnore, err := getStringArray(configMap["copyignore"])
-
-	if err != nil {
-		return Job{}, fmt.Errorf("`copyIgnore` %w", err)
-	}
-
 	workDir, err := getWorkDir(configMap["workdir"])
 
 	if err != nil {
@@ -71,6 +62,8 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 
 	soloExecution := getBool(configMap["soloexecution"], false)
 	removeContainer := getBool(configMap["removecontainer"], true)
+	copyIgnore := getStringArray(configMap["copyignore"])
+	script := getStringArray(configMap["script"])
 	port := getJobPort(configMap["port"])
 
 	var job Job = Job{
@@ -82,6 +75,7 @@ func generateJob(configMap map[string]interface{}) (Job, error) {
 		RemoveContainer: removeContainer,
 		Port:            port,
 		CopyIgnore:      copyIgnore,
+		ErrorChannel:    make(chan error, 1),
 	}
 
 	return job, nil
@@ -95,7 +89,7 @@ func getJobImage(image interface{}) (string, error) {
 	return image.(string), nil
 }
 
-func getStringArray(stringArray interface{}) ([]string, error) {
+func getStringArray(stringArray interface{}) []string {
 	refVal := reflect.ValueOf(stringArray)
 
 	if refVal.Kind() == reflect.Slice {
@@ -105,14 +99,14 @@ func getStringArray(stringArray interface{}) ([]string, error) {
 			arr[i] = refVal.Index(i).Interface().(string)
 		}
 
-		return arr, nil
+		return arr
 	}
 
 	if refVal.Kind() == reflect.String {
-		return []string{stringArray.(string)}, nil
+		return []string{stringArray.(string)}
 	}
 
-	return nil, errors.New("field is not valid")
+	return []string{}
 }
 
 func getJobPort(port interface{}) []Port {

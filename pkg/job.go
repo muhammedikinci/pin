@@ -11,7 +11,8 @@ type Job struct {
 	Port            []Port
 	CopyIgnore      []string
 	RemoveContainer bool
-	Next            *Job
+	Previous        *Job
+	ErrorChannel    chan error
 }
 
 type Port struct {

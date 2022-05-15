@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/spf13/viper"
 )
 
@@ -31,6 +32,8 @@ func Apply(name string, filepath string) error {
 		currentRunner.infoLog.Println(err.Error())
 		return err
 	}
+
+	color.Unset()
 
 	return nil
 }
