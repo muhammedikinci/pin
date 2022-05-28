@@ -4,7 +4,7 @@
   <br>
 </p>
 
-# pin 🔥 [<!--lint ignore no-dead-urls-->![GitHub Actions status | sdras/awesome-actions](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)](https://github.com/muhammedikinci/pin/actions/workflows/go.yml)
+# pin 🔥 [![pipeline](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)](https://github.com/muhammedikinci/pin/actions/workflows/go.yml)
 
 WIP - Local pipeline project with Docker Golang API.
 
