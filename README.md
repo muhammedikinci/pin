@@ -10,6 +10,8 @@ WIP - Local pipeline project with Docker Golang API.
 
 ![pingif](asset/pin.gif)
 
+<sup><sup>terminal from [terminalgif.com](https://terminalgif.com)</sup></sup>
+
 # 🌐 Installation 
 
 ## Download latest release
