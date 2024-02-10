@@ -1,4 +1,4 @@
-package pin
+package runner
 
 import (
 	"archive/tar"
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
@@ -17,10 +16,10 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
-	"github.com/muhammedikinci/pin/pkg/container_manager"
-	"github.com/muhammedikinci/pin/pkg/image_manager"
-	"github.com/muhammedikinci/pin/pkg/interfaces"
-	"github.com/muhammedikinci/pin/pkg/shell_commander"
+	"github.com/muhammedikinci/pin/internal/container_manager"
+	"github.com/muhammedikinci/pin/internal/image_manager"
+	"github.com/muhammedikinci/pin/internal/interfaces"
+	"github.com/muhammedikinci/pin/internal/shell_commander"
 )
 
 type Runner struct {
@@ -212,7 +211,7 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		if reader, _, err := r.cli.CopyFromContainer(r.ctx, currentJob.Container.ID, "/shell_command_output.log"); err == nil {
 			tr := tar.NewReader(reader)
 			tr.Next()
-			b, _ := ioutil.ReadAll(tr)
+			b, _ := io.ReadAll(tr)
 			fmt.Println("\n" + string(b))
 		}
 		color.Unset()
@@ -235,7 +234,7 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 	if reader, _, err := r.cli.CopyFromContainer(r.ctx, currentJob.Container.ID, "/shell_command_output.log"); err == nil {
 		tr := tar.NewReader(reader)
 		tr.Next()
-		b, _ := ioutil.ReadAll(tr)
+		b, _ := io.ReadAll(tr)
 
 		if len(b) != 0 {
 			color.Set(color.FgGreen)

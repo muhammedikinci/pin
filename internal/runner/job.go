@@ -1,10 +1,10 @@
-package pin
+package runner
 
 import (
 	"log"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/muhammedikinci/pin/pkg/interfaces"
+	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
 type Job struct {

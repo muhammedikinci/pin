@@ -16,7 +16,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/fatih/color"
-	"github.com/muhammedikinci/pin/pkg/interfaces"
+	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
 type containerManager struct {

@@ -12,7 +12,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/golang/mock/gomock"
-	"github.com/muhammedikinci/pin/pkg/mocks"
+	"github.com/muhammedikinci/pin/internal/mocks"
 	"github.com/stretchr/testify/assert"
 )
 

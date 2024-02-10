@@ -10,7 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/fatih/color"
-	"github.com/muhammedikinci/pin/pkg/interfaces"
+	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
 func NewImageManager(cli interfaces.Client, log interfaces.Log) imageManager {

@@ -1,4 +1,4 @@
-package pin
+package runner
 
 import (
 	"errors"

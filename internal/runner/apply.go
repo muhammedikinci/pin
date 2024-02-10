@@ -1,4 +1,4 @@
-package pin
+package runner
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Apply(name string, filepath string) error {
+func Apply(filepath string) error {
 	if err := checkFileExists(filepath); err != nil {
 		return err
 	}
