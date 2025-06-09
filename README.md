@@ -12,7 +12,7 @@ WIP - Local pipeline project with Docker Golang API.
 
 <sup><sup>terminal from [terminalgif.com](https://terminalgif.com)</sup></sup>
 
-# 🌐 Installation 
+# 🌐 Installation
 
 ## Download latest release
 
@@ -81,6 +81,7 @@ default: false
 When you add multiple commands to the `script` field, commands are running in the container as a shell script. If soloExecution is set to `true` each command works in a different shell script.
 
 #### soloExecution => false
+
 ```sh
 # shell#1
 cd cmd
@@ -88,10 +89,12 @@ ls
 ```
 
 #### soloExecution => true
+
 ```sh
 # shell#1
 cd cmd
 ```
+
 ```sh
 # shell#2
 ls
@@ -109,6 +112,7 @@ cd cmd && ls
 default: false
 
 logsWithTime => true
+
 ```sh
 ⚉ 2022/05/08 11:36:30 Image is available
 ⚉ 2022/05/08 11:36:30 Start creating container
@@ -117,6 +121,7 @@ logsWithTime => true
 ```
 
 logsWithTime => false
+
 ```sh
 ⚉ Image is available
 ⚉ Start creating container
@@ -131,9 +136,9 @@ default: empty mapping
 You can use this feature for port forwarding from container to your machine with multiple mapping
 
 ```yaml
-  port:
-    - 8082:8080
-    - 8083:8080
+port:
+  - 8082:8080
+  - 8083:8080
 ```
 
 ## copyIgnore
@@ -143,6 +148,7 @@ default: empty mapping
 You can use this feature to ignore copying the specific files in your project to the container.
 
 Sample configuration yaml
+
 ```yaml
 run:
   image: node:current-alpine3.15
@@ -158,6 +164,7 @@ run:
 ```
 
 Actual folder structure in project
+
 ```yaml
 index.js
 server.js
@@ -173,6 +180,7 @@ helper:
 ```
 
 Folder structure in container
+
 ```yaml
 index.js
 helper:
@@ -192,9 +200,7 @@ workflow:
   - testStage
   - parallelJob
   - run
-
-...
-
+---
 parallelJob:
   image: node:current-alpine3.15
   copyFiles: true
@@ -204,31 +210,42 @@ parallelJob:
     - ls -a
 ```
 
+## Environment Variables
+
+You can specify environment variables for your jobs in the YAML configuration. These variables will be available inside the container during job execution.
+
+Example:
+
+```yaml
+workflow:
+  - run
+
+run:
+  image: golang:alpine3.15
+  copyFiles: true
+  soloExecution: true
+  script:
+    - go mod download
+    - go run .
+    - echo "Environment variables:"
+    - echo "MY_VAR: $MY_VAR"
+    - echo "ANOTHER_VAR: $ANOTHER_VAR"
+  port:
+    - 8082:8080
+  env:
+    - MY_VAR=value
+    - ANOTHER_VAR=another_value
+```
+
+In this example, the environment variables `MY_VAR` and `ANOTHER_VAR` are set and printed during job execution.
+
 # Tests
 
 ```sh
 go test ./...
 ```
 
-# Checklist
-
-- Implement web interface
-- Support concurrent jobs ✅[Issue#9](https://github.com/muhammedikinci/pin/issues/9)
-- Add working with remote docker deamon support
-- Change image pulling logs (get only status logs)✅[Issue#1](https://github.com/muhammedikinci/pin/issues/1)
-- Add custom ignore configuration to copyFiles for project files (like gitignore) ✅[Issue#7](https://github.com/muhammedikinci/pin/issues/7)
-- Add shared artifacts support between different jobs 
-- Add timestamp to container names ✅[Issue#2](https://github.com/muhammedikinci/pin/issues/2)
-- Create small pieces with extracting codes from runner struct and write unit test:
-  - Image Manager ✅[Issue#3](https://github.com/muhammedikinci/pin/issues/3)
-  - Container Manager ✅[Issue#4](https://github.com/muhammedikinci/pin/issues/4)
-  - Shell Commander ✅[Issue#5](https://github.com/muhammedikinci/pin/issues/5)
-  - Parser
-  - Runner
-- Add port expose support ✅[Issue#6](https://github.com/muhammedikinci/pin/issues/6)
-- Support long living containers
-- Add concurrency between jobs and graceful shutdown with global context ✅[Issue#8](https://github.com/muhammedikinci/pin/issues/8)
-
 # Contact
 
 Muhammed İkinci - muhammedikinci@outlook.com
+

@@ -89,7 +89,7 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 		ports[port.Out] = port.In
 	}
 
-	resp, err := currentJob.ContainerManager.StartContainer(r.ctx, currentJob.Name, currentJob.Image, ports)
+	resp, err := currentJob.ContainerManager.StartContainer(r.ctx, currentJob.Name, currentJob.Image, ports, currentJob.Env)
 
 	if err != nil {
 		currentJob.ErrorChannel <- err

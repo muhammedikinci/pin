@@ -22,7 +22,6 @@ func parse() (Pipeline, error) {
 		configMap := viper.GetStringMap(v)
 
 		job, err := generateJob(configMap)
-
 		if err != nil {
 			return Pipeline{}, err
 		}
@@ -43,19 +42,16 @@ func parse() (Pipeline, error) {
 
 func generateJob(configMap map[string]interface{}) (*Job, error) {
 	image, err := getJobImage(configMap["image"])
-
 	if err != nil {
 		return &Job{}, err
 	}
 
 	workDir, err := getWorkDir(configMap["workdir"])
-
 	if err != nil {
 		return &Job{}, err
 	}
 
 	copyFiles, err := getCopyFiles(configMap["copyfiles"])
-
 	if err != nil {
 		return &Job{}, err
 	}
@@ -65,6 +61,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 	copyIgnore := getStringArray(configMap["copyignore"])
 	script := getStringArray(configMap["script"])
 	port := getJobPort(configMap["port"])
+	env := getEnv(configMap["env"])
 
 	var job *Job = &Job{
 		Image:         image,
@@ -76,6 +73,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 		Port:          port,
 		CopyIgnore:    copyIgnore,
 		ErrorChannel:  make(chan error, 1),
+		Env:           env,
 	}
 
 	return job, nil
@@ -155,4 +153,8 @@ func getBool(val interface{}, defaultValue bool) bool {
 	}
 
 	return val.(bool)
+}
+
+func getEnv(env interface{}) []string {
+	return getStringArray(env)
 }

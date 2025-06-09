@@ -1,0 +1,14 @@
+workflow:
+  - run
+
+logsWithTime: true
+
+run:
+  image: golang:alpine3.15
+  script:
+    - 'echo "Environment variables:"'
+    - 'echo "MY_VAR: $MY_VAR"'
+    - 'echo "ANOTHER_VAR: $ANOTHER_VAR"'
+  env:
+    - MY_VAR=value
+    - ANOTHER_VAR=another_value

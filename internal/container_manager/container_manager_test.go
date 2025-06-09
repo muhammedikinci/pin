@@ -43,7 +43,7 @@ func TestWhenContainerCreateReturnErrorStartContainerMustReturnSameError(t *test
 		log: mockLog,
 	}
 
-	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{})
+	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{}, []string{})
 
 	assert.Equal(t, resp, container.ContainerCreateCreatedBody{})
 	assert.Equal(t, err, merror)
@@ -75,7 +75,7 @@ func TestWhenContainerCreateReturnResponseStartContainerMustSameResponseWithNilE
 		log: mockLog,
 	}
 
-	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{})
+	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{}, []string{})
 
 	assert.Equal(t, resp.ID, mres.ID)
 	assert.Equal(t, err, nil)
@@ -212,7 +212,14 @@ func TestAppender(t *testing.T) {
 	cm := containerManager{}
 
 	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
-		return cm.appender(path, info, err, currentPath, tw, []string{"node_modules", "ignore_test1.txt", ".test_point_folder"})
+		return cm.appender(
+			path,
+			info,
+			err,
+			currentPath,
+			tw,
+			[]string{"node_modules", "ignore_test1.txt", ".test_point_folder"},
+		)
 	})
 
 	assert.Equal(t, err, nil)

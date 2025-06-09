@@ -24,6 +24,7 @@ type Job struct {
 	ImageManager     interfaces.ImageManager
 	ContainerManager interfaces.ContainerManager
 	ShellCommander   interfaces.ShellCommander
+	Env              []string
 }
 
 type Port struct {

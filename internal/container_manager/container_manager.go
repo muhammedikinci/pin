@@ -31,7 +31,7 @@ func NewContainerManager(cli interfaces.Client, log interfaces.Log) containerMan
 	}
 }
 
-func (cm containerManager) StartContainer(ctx context.Context, jobName string, image string, ports map[string]string) (container.ContainerCreateCreatedBody, error) {
+func (cm containerManager) StartContainer(ctx context.Context, jobName string, image string, ports map[string]string, env []string) (container.ContainerCreateCreatedBody, error) {
 	color.Set(color.FgGreen)
 	cm.log.Println("Start creating container")
 	color.Unset()
@@ -59,6 +59,7 @@ func (cm containerManager) StartContainer(ctx context.Context, jobName string, i
 		Image:        image,
 		Tty:          true,
 		ExposedPorts: exposedPorts,
+		Env:          env,
 	}, hostConfig, nil, nil, containerName)
 
 	if err != nil {
