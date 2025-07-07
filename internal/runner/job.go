@@ -25,6 +25,8 @@ type Job struct {
 	ContainerManager interfaces.ContainerManager
 	ShellCommander   interfaces.ShellCommander
 	Env              []string
+	ArtifactPath     string
+	Condition        string
 }
 
 type Port struct {

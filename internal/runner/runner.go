@@ -31,7 +31,6 @@ func (r *Runner) run(pipeline Pipeline) error {
 	r.createGlobalContext(pipeline.Workflow)
 
 	cli, err := client.NewClientWithOpts()
-
 	if err != nil {
 		return err
 	}
@@ -51,7 +50,11 @@ func (r *Runner) run(pipeline Pipeline) error {
 
 func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	if logsWithTime {
-		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), log.Ldate|log.Ltime)
+		currentJob.InfoLog = log.New(
+			os.Stdout,
+			fmt.Sprintf("⚉ %s ", currentJob.Name),
+			log.Ldate|log.Ltime,
+		)
 	} else {
 		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
 	}
@@ -69,8 +72,16 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 		}
 	}
 
-	isImageAvailable, err := currentJob.ImageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
+	conditionEvaluator := NewConditionEvaluator()
+	if currentJob.Condition != "" && !conditionEvaluator.EvaluateCondition(currentJob.Condition) {
+		color.Set(color.FgYellow)
+		currentJob.InfoLog.Printf("Job skipped due to condition: %s", currentJob.Condition)
+		color.Unset()
+		currentJob.ErrorChannel <- nil
+		return
+	}
 
+	isImageAvailable, err := currentJob.ImageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
 	if err != nil {
 		currentJob.ErrorChannel <- err
 		return
@@ -89,8 +100,13 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 		ports[port.Out] = port.In
 	}
 
-	resp, err := currentJob.ContainerManager.StartContainer(r.ctx, currentJob.Name, currentJob.Image, ports, currentJob.Env)
-
+	resp, err := currentJob.ContainerManager.StartContainer(
+		r.ctx,
+		currentJob.Name,
+		currentJob.Image,
+		ports,
+		currentJob.Env,
+	)
 	if err != nil {
 		currentJob.ErrorChannel <- err
 		return
@@ -119,6 +135,13 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 		return
 	}
 
+	if currentJob.ArtifactPath != "" {
+		if err := currentJob.ContainerManager.CopyFromContainer(r.ctx, currentJob.Container.ID, currentJob.ArtifactPath, "./*"); err != nil {
+			currentJob.ErrorChannel <- err
+			return
+		}
+	}
+
 	if err := currentJob.ContainerManager.StopContainer(r.ctx, currentJob.Container.ID); err != nil {
 		currentJob.ErrorChannel <- err
 		return
@@ -137,17 +160,24 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 }
 
 func (r Runner) commandScriptExecutor(currentJob Job) error {
-	cmds := currentJob.ShellCommander.PrepareShellCommands(currentJob.SoloExecution, currentJob.Script)
+	cmds := currentJob.ShellCommander.PrepareShellCommands(
+		currentJob.SoloExecution,
+		currentJob.Script,
+	)
 
 	for _, cmd := range cmds {
 		buf, err := currentJob.ShellCommander.ShellToTar(cmd)
-
 		if err != nil {
 			return err
 		}
 
-		err = r.cli.CopyToContainer(r.ctx, currentJob.Container.ID, "/home/", buf, types.CopyToContainerOptions{})
-
+		err = r.cli.CopyToContainer(
+			r.ctx,
+			currentJob.Container.ID,
+			"/home/",
+			buf,
+			types.CopyToContainerOptions{},
+		)
 		if err != nil {
 			return err
 		}
@@ -185,7 +215,6 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		Cmd:          args,
 		WorkingDir:   currentJob.WorkDir,
 	})
-
 	if err != nil {
 		return err
 	}
@@ -256,7 +285,6 @@ func (r Runner) internalExec(command string, currentJob Job) error {
 		Cmd:          args,
 		WorkingDir:   currentJob.WorkDir,
 	})
-
 	if err != nil {
 		return err
 	}

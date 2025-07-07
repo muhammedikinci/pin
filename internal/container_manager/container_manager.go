@@ -31,7 +31,13 @@ func NewContainerManager(cli interfaces.Client, log interfaces.Log) containerMan
 	}
 }
 
-func (cm containerManager) StartContainer(ctx context.Context, jobName string, image string, ports map[string]string, env []string) (container.ContainerCreateCreatedBody, error) {
+func (cm containerManager) StartContainer(
+	ctx context.Context,
+	jobName string,
+	image string,
+	ports map[string]string,
+	env []string,
+) (container.ContainerCreateCreatedBody, error) {
 	color.Set(color.FgGreen)
 	cm.log.Println("Start creating container")
 	color.Unset()
@@ -45,7 +51,10 @@ func (cm containerManager) StartContainer(ctx context.Context, jobName string, i
 		inPort, _ := nat.NewPort("tcp", in)
 
 		if _, ok := portBindings[inPort]; ok {
-			portBindings[inPort] = append(portBindings[inPort], nat.PortBinding{HostIP: "0.0.0.0", HostPort: out})
+			portBindings[inPort] = append(
+				portBindings[inPort],
+				nat.PortBinding{HostIP: "0.0.0.0", HostPort: out},
+			)
 		} else {
 			portBindings[inPort] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: out}}
 		}
@@ -61,7 +70,6 @@ func (cm containerManager) StartContainer(ctx context.Context, jobName string, i
 		ExposedPorts: exposedPorts,
 		Env:          env,
 	}, hostConfig, nil, nil, containerName)
-
 	if err != nil {
 		return container.ContainerCreateCreatedBody{}, err
 	}
@@ -83,7 +91,11 @@ func (cm containerManager) StopContainer(ctx context.Context, containerID string
 	return nil
 }
 
-func (cm containerManager) RemoveContainer(ctx context.Context, containerID string, forceRemove bool) error {
+func (cm containerManager) RemoveContainer(
+	ctx context.Context,
+	containerID string,
+	forceRemove bool,
+) error {
 	color.Set(color.FgBlue)
 	cm.log.Println("Container removing")
 
@@ -97,7 +109,11 @@ func (cm containerManager) RemoveContainer(ctx context.Context, containerID stri
 	return nil
 }
 
-func (cm containerManager) CopyToContainer(ctx context.Context, containerID, workDir string, copyIgnore []string) error {
+func (cm containerManager) CopyToContainer(
+	ctx context.Context,
+	containerID, workDir string,
+	copyIgnore []string,
+) error {
 	var buf bytes.Buffer
 
 	tw := tar.NewWriter(&buf)
@@ -108,13 +124,11 @@ func (cm containerManager) CopyToContainer(ctx context.Context, containerID, wor
 	err := filepath.Walk(currentPath, func(path string, info os.FileInfo, err error) error {
 		return cm.appender(path, info, err, currentPath, tw, copyIgnore)
 	})
-
 	if err != nil {
 		return err
 	}
 
 	err = cm.cli.CopyToContainer(ctx, containerID, workDir, &buf, types.CopyToContainerOptions{})
-
 	if err != nil {
 		return err
 	}
@@ -122,7 +136,14 @@ func (cm containerManager) CopyToContainer(ctx context.Context, containerID, wor
 	return nil
 }
 
-func (cm containerManager) appender(path string, info os.FileInfo, err error, currentPath string, tw *tar.Writer, copyIgnore []string) error {
+func (cm containerManager) appender(
+	path string,
+	info os.FileInfo,
+	err error,
+	currentPath string,
+	tw *tar.Writer,
+	copyIgnore []string,
+) error {
 	if err != nil {
 		return err
 	}
@@ -142,7 +163,10 @@ func (cm containerManager) appender(path string, info os.FileInfo, err error, cu
 		return err
 	}
 
-	header.Name = strings.TrimPrefix(strings.Replace(path, currentPath, "", -1), string(filepath.Separator))
+	header.Name = strings.TrimPrefix(
+		strings.Replace(path, currentPath, "", -1),
+		string(filepath.Separator),
+	)
 	header.Name = strings.ReplaceAll(header.Name, "\\", "/")
 
 	for _, ignore := range copyIgnore {
@@ -167,4 +191,32 @@ func (cm containerManager) appender(path string, info os.FileInfo, err error, cu
 	}
 
 	return nil
+}
+
+func (cm containerManager) CopyFromContainer(
+	ctx context.Context,
+	containerID string,
+	srcPath string,
+	destPath string,
+) error {
+	reader, _, err := cm.cli.CopyFromContainer(ctx, containerID, srcPath)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	tr := tar.NewReader(reader)
+	_, err = tr.Next()
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, tr)
+	return err
 }

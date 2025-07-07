@@ -62,6 +62,8 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 	script := getStringArray(configMap["script"])
 	port := getJobPort(configMap["port"])
 	env := getEnv(configMap["env"])
+	artifactPath := getString(configMap["artifactpath"])
+	condition := getString(configMap["condition"])
 
 	var job *Job = &Job{
 		Image:         image,
@@ -74,6 +76,8 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 		CopyIgnore:    copyIgnore,
 		ErrorChannel:  make(chan error, 1),
 		Env:           env,
+		ArtifactPath:  artifactPath,
+		Condition:     condition,
 	}
 
 	return job, nil
@@ -157,4 +161,11 @@ func getBool(val interface{}, defaultValue bool) bool {
 
 func getEnv(env interface{}) []string {
 	return getStringArray(env)
+}
+
+func getString(val interface{}) string {
+	if val == nil {
+		return ""
+	}
+	return val.(string)
 }

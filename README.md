@@ -239,6 +239,76 @@ run:
 
 In this example, the environment variables `MY_VAR` and `ANOTHER_VAR` are set and printed during job execution.
 
+## Conditional Execution
+
+You can specify conditions for job execution using the `condition` field. Jobs will only run if the condition evaluates to true.
+
+Example:
+
+```yaml
+workflow:
+  - build
+  - test
+  - deploy
+
+build:
+  image: golang:alpine3.15
+  copyFiles: true
+  script:
+    - go build -o app .
+
+test:
+  image: golang:alpine3.15
+  copyFiles: true
+  script:
+    - go test ./...
+
+deploy:
+  image: alpine:latest
+  condition: $BRANCH == "main"
+  script:
+    - echo "Deploying to production..."
+    - ./deploy.sh
+```
+
+### Supported Condition Operators
+
+- **Equality**: `$VAR == "value"` - Check if variable equals value
+- **Inequality**: `$VAR != "value"` - Check if variable does not equal value
+- **AND**: `$VAR1 == "value1" && $VAR2 == "value2"` - Both conditions must be true
+- **OR**: `$VAR1 == "value1" || $VAR2 == "value2"` - At least one condition must be true
+- **Variable existence**: `$VAR` - Check if variable exists and is not empty/false/0
+
+### Examples
+
+```yaml
+# Run only on main branch
+deploy:
+  condition: $BRANCH == "main"
+
+# Run on main or develop branch
+deploy:
+  condition: $BRANCH == "main" || $BRANCH == "develop"
+
+# Run only when both conditions are met
+deploy:
+  condition: $BRANCH == "main" && $DEPLOY == "true"
+
+# Run when variable exists
+cleanup:
+  condition: $CLEANUP_ENABLED
+
+# Run when environment is not test
+deploy:
+  condition: $ENV != "test"
+```
+
+You can set environment variables before running pin:
+
+```bash
+BRANCH=main pin apply -f pipeline.yaml
+```
+
 # Tests
 
 ```sh

@@ -1,0 +1,25 @@
+workflow:
+  - build
+  - test
+  - deploy
+
+build:
+  image: golang:alpine3.15
+  copyFiles: true
+  script:
+    - go build -o app .
+    - echo "Build completed"
+
+test:
+  image: golang:alpine3.15
+  copyFiles: true
+  script:
+    - go test ./...
+    - echo "Tests completed"
+
+deploy:
+  image: alpine:latest
+  condition: $BRANCH == "main"
+  script:
+    - echo "Deploying application..."
+    - echo "Deployment completed"

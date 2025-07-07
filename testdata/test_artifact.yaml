@@ -1,0 +1,12 @@
+workflow:
+  - build
+
+build:
+  image: golang:alpine3.15
+  copyFiles: true
+  script:
+    - mkdir /workspace
+    - cd /workspace
+    - touch helloworld
+  artifactPath: /workspace
+
