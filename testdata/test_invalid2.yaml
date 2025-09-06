@@ -1,0 +1,6 @@
+workflow:
+  - build
+
+build:
+  image: golang:alpine3.15
+  port: "invalid_port_format"  # Should cause validation error

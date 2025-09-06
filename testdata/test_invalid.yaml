@@ -1,0 +1,13 @@
+workflow:
+  - build
+  - test
+
+build:
+  # Missing both image and dockerfile - should cause validation error
+  script:
+    - echo "hello world"
+
+test:
+  image: golang:alpine3.15
+  # Empty script array - should cause validation error
+  script: []

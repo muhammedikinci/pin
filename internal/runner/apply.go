@@ -19,6 +19,19 @@ func Apply(filepath string) error {
 		return err
 	}
 
+	// Validate pipeline configuration before execution
+	validator := NewPipelineValidator()
+	if err := validator.ValidatePipeline(); err != nil {
+		color.Set(color.FgRed)
+		fmt.Printf("Pipeline validation failed: %s\n", err.Error())
+		color.Unset()
+		return err
+	}
+
+	color.Set(color.FgGreen)
+	fmt.Println("Pipeline validation successful")
+	color.Unset()
+
 	pipeline, err := parse()
 
 	if err != nil {
