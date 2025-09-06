@@ -81,17 +81,33 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 		return
 	}
 
-	isImageAvailable, err := currentJob.ImageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
-	if err != nil {
-		currentJob.ErrorChannel <- err
-		return
-	}
-
-	if !isImageAvailable {
-		if err := currentJob.ImageManager.PullImage(r.ctx, currentJob.Image); err != nil {
+	// Handle Dockerfile build or regular image pull/check
+	if currentJob.Dockerfile != "" {
+		// Build image from Dockerfile
+		imageName := fmt.Sprintf("%s-custom:%s", currentJob.Name, "latest")
+		if err := currentJob.ImageManager.BuildImageFromDockerfile(r.ctx, currentJob.Dockerfile, imageName); err != nil {
 			currentJob.ErrorChannel <- err
 			return
 		}
+		// Use the built image name
+		currentJob.Image = imageName
+	} else if currentJob.Image != "" {
+		// Handle regular image pull/check
+		isImageAvailable, err := currentJob.ImageManager.CheckTheImageAvailable(r.ctx, currentJob.Image)
+		if err != nil {
+			currentJob.ErrorChannel <- err
+			return
+		}
+
+		if !isImageAvailable {
+			if err := currentJob.ImageManager.PullImage(r.ctx, currentJob.Image); err != nil {
+				currentJob.ErrorChannel <- err
+				return
+			}
+		}
+	} else {
+		currentJob.ErrorChannel <- errors.New("either 'image' or 'dockerfile' must be specified")
+		return
 	}
 
 	ports := map[string]string{}

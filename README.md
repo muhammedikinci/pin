@@ -309,6 +309,50 @@ You can set environment variables before running pin:
 BRANCH=main pin apply -f pipeline.yaml
 ```
 
+## Custom Dockerfile
+
+You can use a custom Dockerfile to build your own image for the job instead of pulling a pre-built image.
+
+Example:
+
+```yaml
+workflow:
+  - custom-build
+
+custom-build:
+  dockerfile: "./Dockerfile"
+  copyFiles: true
+  script:
+    - echo "Hello from custom Docker image!"
+    - ls -la
+```
+
+### Key Features
+
+- **dockerfile**: Path to your custom Dockerfile
+- **Automatic image building**: Pin will build the image from your Dockerfile before running the job
+- **Build context**: The directory containing the Dockerfile will be used as the build context
+- **Image naming**: Built images are automatically tagged as `<job-name>-custom:latest`
+
+### Example Dockerfile
+
+```dockerfile
+FROM alpine:latest
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    make
+
+WORKDIR /app
+USER nobody
+
+CMD ["/bin/bash"]
+```
+
+**Note**: When using `dockerfile`, you don't need to specify the `image` field. Pin will use the built image automatically.
+
 # Tests
 
 ```sh

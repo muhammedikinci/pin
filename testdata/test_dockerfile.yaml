@@ -1,0 +1,10 @@
+workflow:
+  - custom-build
+
+custom-build:
+  dockerfile: "./testdata/Dockerfile.test"
+  copyFiles: true
+  script:
+    - echo "Hello from custom Docker image!"
+    - ls -la
+    - whoami

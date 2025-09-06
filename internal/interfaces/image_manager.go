@@ -6,4 +6,5 @@ import "context"
 type ImageManager interface {
 	CheckTheImageAvailable(ctx context.Context, image string) (bool, error)
 	PullImage(ctx context.Context, image string) error
+	BuildImageFromDockerfile(ctx context.Context, dockerfilePath string, imageName string) error
 }

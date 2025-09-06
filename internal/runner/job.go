@@ -10,6 +10,7 @@ import (
 type Job struct {
 	Name             string
 	Image            string
+	Dockerfile       string
 	Script           []string
 	WorkDir          string
 	CopyFiles        bool

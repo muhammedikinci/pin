@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 
@@ -64,9 +63,11 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 	env := getEnv(configMap["env"])
 	artifactPath := getString(configMap["artifactpath"])
 	condition := getString(configMap["condition"])
+	dockerfile := getString(configMap["dockerfile"])
 
 	var job *Job = &Job{
 		Image:         image,
+		Dockerfile:    dockerfile,
 		Script:        script,
 		CopyFiles:     copyFiles,
 		WorkDir:       workDir,
@@ -85,7 +86,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 
 func getJobImage(image interface{}) (string, error) {
 	if image == nil {
-		return "", errors.New("image not specified")
+		return "", nil
 	}
 
 	return image.(string), nil
