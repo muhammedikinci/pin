@@ -22,3 +22,5 @@ go.work
 
 .pin
 dist/
+
+.DS_Store
