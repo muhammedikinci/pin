@@ -1,0 +1,14 @@
+workflow:
+  - multi-port-server
+
+multi-port-server:
+  image: alpine:latest
+  port:
+    - "8095:8080"              # Standard format
+    - "127.0.0.1:8096:8081"    # Localhost only
+    - "0.0.0.0:8097:8082"      # Explicit all interfaces
+  script:
+    - echo "Multi-port server configured"
+    - echo "Standard port 8095 to 8080"
+    - echo "Localhost port 127.0.0.1 8096 to 8081" 
+    - echo "All interfaces port 0.0.0.0 8097 to 8082"

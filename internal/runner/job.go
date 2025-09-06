@@ -31,6 +31,7 @@ type Job struct {
 }
 
 type Port struct {
-	Out string
-	In  string
+	Out    string // Host port
+	In     string // Container port
+	HostIP string // Host IP (optional, defaults to 0.0.0.0)
 }

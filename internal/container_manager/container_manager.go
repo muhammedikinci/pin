@@ -47,16 +47,34 @@ func (cm containerManager) StartContainer(
 	portBindings := nat.PortMap{}
 	exposedPorts := nat.PortSet{}
 
-	for out, in := range ports {
-		inPort, _ := nat.NewPort("tcp", in)
+	for hostInfo, containerPort := range ports {
+		// hostInfo can be either "hostPort" or "hostIP:hostPort"
+		parts := strings.Split(hostInfo, ":")
+		var hostIP, hostPort string
+		
+		if len(parts) == 1 {
+			// Format: "hostPort"
+			hostIP = "0.0.0.0"
+			hostPort = parts[0]
+		} else if len(parts) == 2 {
+			// Format: "hostIP:hostPort"
+			hostIP = parts[0]
+			hostPort = parts[1]
+		} else {
+			// Fallback
+			hostIP = "0.0.0.0"
+			hostPort = "8080"
+		}
+
+		inPort, _ := nat.NewPort("tcp", containerPort)
 
 		if _, ok := portBindings[inPort]; ok {
 			portBindings[inPort] = append(
 				portBindings[inPort],
-				nat.PortBinding{HostIP: "0.0.0.0", HostPort: out},
+				nat.PortBinding{HostIP: hostIP, HostPort: hostPort},
 			)
 		} else {
-			portBindings[inPort] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: out}}
+			portBindings[inPort] = []nat.PortBinding{{HostIP: hostIP, HostPort: hostPort}}
 		}
 
 		exposedPorts[inPort] = struct{}{}

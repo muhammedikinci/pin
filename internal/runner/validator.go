@@ -184,15 +184,29 @@ func (v *PipelineValidator) validatePorts(configMap map[string]interface{}) erro
 	return nil
 }
 
-// validatePortFormat validates a single port format (e.g., "8080:80")
+// validatePortFormat validates a single port format
+// Supports formats: "8080:80" or "127.0.0.1:8080:80" or "localhost:8080:80"
 func (v *PipelineValidator) validatePortFormat(portStr string) error {
 	parts := strings.Split(portStr, ":")
-	if len(parts) != 2 {
-		return errors.New("port must be in format 'host:container' (e.g., '8080:80')")
-	}
 	
-	if strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
-		return errors.New("both host and container ports must be specified")
+	switch len(parts) {
+	case 2:
+		// Format: "hostPort:containerPort" (e.g., "8080:80")
+		if strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" {
+			return errors.New("both host and container ports must be specified")
+		}
+	case 3:
+		// Format: "hostIP:hostPort:containerPort" (e.g., "127.0.0.1:8080:80")
+		if strings.TrimSpace(parts[0]) == "" || strings.TrimSpace(parts[1]) == "" || strings.TrimSpace(parts[2]) == "" {
+			return errors.New("host IP, host port, and container port must all be specified")
+		}
+		// Basic IP/hostname validation
+		hostIP := strings.TrimSpace(parts[0])
+		if hostIP == "" {
+			return errors.New("host IP cannot be empty")
+		}
+	default:
+		return errors.New("port must be in format 'hostPort:containerPort' (e.g., '8080:80') or 'hostIP:hostPort:containerPort' (e.g., '127.0.0.1:8080:80')")
 	}
 
 	return nil

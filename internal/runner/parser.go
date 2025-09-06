@@ -120,8 +120,7 @@ func getJobPort(port interface{}) []Port {
 
 		for i := 0; i < refVal.Len(); i++ {
 			line := refVal.Index(i).Interface().(string)
-			ports := strings.Split(line, ":")
-			arr[i] = Port{Out: ports[0], In: ports[1]}
+			arr[i] = parsePortString(line)
 		}
 
 		return arr
@@ -129,11 +128,43 @@ func getJobPort(port interface{}) []Port {
 
 	if refVal.Kind() == reflect.String {
 		line := port.(string)
-		ports := strings.Split(line, ":")
-		return []Port{{Out: ports[0], In: ports[1]}}
+		return []Port{parsePortString(line)}
 	}
 
 	return []Port{}
+}
+
+// parsePortString parses port configuration string into Port struct
+// Supports formats:
+// - "8080:80" -> hostIP: "0.0.0.0", hostPort: "8080", containerPort: "80"
+// - "127.0.0.1:8080:80" -> hostIP: "127.0.0.1", hostPort: "8080", containerPort: "80"
+// - "localhost:8080:80" -> hostIP: "localhost", hostPort: "8080", containerPort: "80"
+func parsePortString(portStr string) Port {
+	parts := strings.Split(portStr, ":")
+	
+	switch len(parts) {
+	case 2:
+		// Format: "8080:80"
+		return Port{
+			Out:    parts[0],
+			In:     parts[1],
+			HostIP: "0.0.0.0", // Default host IP
+		}
+	case 3:
+		// Format: "127.0.0.1:8080:80" or "localhost:8080:80"
+		return Port{
+			HostIP: parts[0],
+			Out:    parts[1],
+			In:     parts[2],
+		}
+	default:
+		// Fallback to default format if invalid
+		return Port{
+			Out:    "8080",
+			In:     "80",
+			HostIP: "0.0.0.0",
+		}
+	}
 }
 
 func getWorkDir(workDir interface{}) (string, error) {

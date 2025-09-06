@@ -46,7 +46,32 @@ go run ./cmd/cli/. apply -n "test" -f ./testdata/test.yaml
 
 # ⚙️ Configuration
 
-Sample yaml file
+Pin includes built-in YAML validation to catch configuration errors before pipeline execution.
+
+## Pipeline Validation
+
+Pin automatically validates your pipeline configuration before execution:
+
+- ✅ **Required fields**: Ensures either `image` or `dockerfile` is specified
+- ✅ **Field types**: Validates all fields have correct data types  
+- ✅ **Port formats**: Checks port configurations match supported formats
+- ✅ **Script validation**: Ensures scripts are not empty
+- ✅ **Boolean fields**: Validates boolean configurations
+
+### Validation Examples
+
+```bash
+# Valid configuration passes validation
+$ pin apply -f pipeline.yaml
+Pipeline validation successful
+⚉ build Starting...
+
+# Invalid configuration shows helpful errors
+$ pin apply -f invalid.yaml
+Pipeline validation failed: validation error in job 'build': either 'image' or 'dockerfile' must be specified
+```
+
+## Sample yaml file
 
 ```yaml
 workflow:
@@ -133,13 +158,39 @@ logsWithTime => false
 
 default: empty mapping
 
-You can use this feature for port forwarding from container to your machine with multiple mapping
+You can use this feature for port forwarding from container to your machine with flexible host and port configuration.
+
+### Port Configuration Formats
+
+1. **Standard format**: `"hostPort:containerPort"`
+2. **Custom host format**: `"hostIP:hostPort:containerPort"`
+
+### Examples
 
 ```yaml
+# Standard port mapping (binds to all interfaces)
+port: "8080:80"
+
+# Multiple ports with different configurations
 port:
-  - 8082:8080
-  - 8083:8080
+  - "8082:8080"                    # Standard format
+  - "127.0.0.1:8083:8080"          # Bind only to localhost
+  - "192.168.1.100:8084:8080"      # Bind to specific IP address
+
+# Mix of standard and custom host formats
+run:
+  image: nginx:alpine
+  port:
+    - "8080:80"                    # Available on all network interfaces
+    - "127.0.0.1:8081:80"          # Only accessible from localhost
+    - "0.0.0.0:8082:80"            # Explicitly bind to all interfaces
 ```
+
+### Use Cases
+
+- **Security**: Bind services only to localhost (`127.0.0.1:8080:80`)
+- **Network isolation**: Bind to specific network interfaces (`192.168.1.100:8080:80`)
+- **Development**: Expose different ports for different environments
 
 ## copyIgnore
 

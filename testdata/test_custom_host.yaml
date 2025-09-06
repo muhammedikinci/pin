@@ -1,0 +1,12 @@
+workflow:
+  - web-server
+
+web-server:
+  image: nginx:alpine
+  port:
+    - "127.0.0.1:8092:80"  # Bind to localhost only
+  script:
+    - echo "Web server started"
+    - nginx -g "daemon off;" &
+    - sleep 2
+    - curl -s http://localhost || echo "Nginx is running"

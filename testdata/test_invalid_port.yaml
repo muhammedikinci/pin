@@ -1,0 +1,6 @@
+workflow:
+  - invalid-port
+
+invalid-port:
+  image: nginx:alpine
+  port: "invalid_format"  # Should cause validation error

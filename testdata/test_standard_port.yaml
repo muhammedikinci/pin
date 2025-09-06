@@ -1,0 +1,11 @@
+workflow:
+  - web-server
+
+web-server:
+  image: nginx:alpine
+  port: "8090:80"  # Standard format
+  script:
+    - echo "Web server with standard port binding"
+    - nginx -g "daemon off;" &
+    - sleep 2
+    - curl -s http://localhost || echo "Nginx is running"

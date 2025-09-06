@@ -113,7 +113,14 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	ports := map[string]string{}
 
 	for _, port := range currentJob.Port {
-		ports[port.Out] = port.In
+		// Create host info with IP if specified
+		var hostInfo string
+		if port.HostIP != "" && port.HostIP != "0.0.0.0" {
+			hostInfo = port.HostIP + ":" + port.Out
+		} else {
+			hostInfo = port.Out
+		}
+		ports[hostInfo] = port.In
 	}
 
 	resp, err := currentJob.ContainerManager.StartContainer(
