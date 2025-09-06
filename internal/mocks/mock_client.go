@@ -186,6 +186,21 @@ func (mr *MockClientMockRecorder) CopyToContainer(ctx, containerID, dstPath, con
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyToContainer", reflect.TypeOf((*MockClient)(nil).CopyToContainer), ctx, containerID, dstPath, content, options)
 }
 
+// ImageBuild mocks base method.
+func (m *MockClient) ImageBuild(ctx context.Context, buildContext io.Reader, options types.ImageBuildOptions) (types.ImageBuildResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ImageBuild", ctx, buildContext, options)
+	ret0, _ := ret[0].(types.ImageBuildResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ImageBuild indicates an expected call of ImageBuild.
+func (mr *MockClientMockRecorder) ImageBuild(ctx, buildContext, options interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ImageBuild", reflect.TypeOf((*MockClient)(nil).ImageBuild), ctx, buildContext, options)
+}
+
 // ImageList mocks base method.
 func (m *MockClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
 	m.ctrl.T.Helper()

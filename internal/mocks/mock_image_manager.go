@@ -34,6 +34,20 @@ func (m *MockImageManager) EXPECT() *MockImageManagerMockRecorder {
 	return m.recorder
 }
 
+// BuildImageFromDockerfile mocks base method.
+func (m *MockImageManager) BuildImageFromDockerfile(ctx context.Context, dockerfilePath, imageName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "BuildImageFromDockerfile", ctx, dockerfilePath, imageName)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BuildImageFromDockerfile indicates an expected call of BuildImageFromDockerfile.
+func (mr *MockImageManagerMockRecorder) BuildImageFromDockerfile(ctx, dockerfilePath, imageName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildImageFromDockerfile", reflect.TypeOf((*MockImageManager)(nil).BuildImageFromDockerfile), ctx, dockerfilePath, imageName)
+}
+
 // CheckTheImageAvailable mocks base method.
 func (m *MockImageManager) CheckTheImageAvailable(ctx context.Context, image string) (bool, error) {
 	m.ctrl.T.Helper()

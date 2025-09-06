@@ -35,6 +35,20 @@ func (m *MockContainerManager) EXPECT() *MockContainerManagerMockRecorder {
 	return m.recorder
 }
 
+// CopyFromContainer mocks base method.
+func (m *MockContainerManager) CopyFromContainer(ctx context.Context, containerID, srcPath, destPath string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CopyFromContainer", ctx, containerID, srcPath, destPath)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CopyFromContainer indicates an expected call of CopyFromContainer.
+func (mr *MockContainerManagerMockRecorder) CopyFromContainer(ctx, containerID, srcPath, destPath interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CopyFromContainer", reflect.TypeOf((*MockContainerManager)(nil).CopyFromContainer), ctx, containerID, srcPath, destPath)
+}
+
 // CopyToContainer mocks base method.
 func (m *MockContainerManager) CopyToContainer(ctx context.Context, containerID, workDir string, copyIgnore []string) error {
 	m.ctrl.T.Helper()
@@ -64,18 +78,18 @@ func (mr *MockContainerManagerMockRecorder) RemoveContainer(ctx, containerID, fo
 }
 
 // StartContainer mocks base method.
-func (m *MockContainerManager) StartContainer(ctx context.Context, jobName, image string, ports map[string]string) (container.ContainerCreateCreatedBody, error) {
+func (m *MockContainerManager) StartContainer(ctx context.Context, name, image string, ports map[string]string, env []string) (container.ContainerCreateCreatedBody, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StartContainer", ctx, jobName, image, ports)
+	ret := m.ctrl.Call(m, "StartContainer", ctx, name, image, ports, env)
 	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StartContainer indicates an expected call of StartContainer.
-func (mr *MockContainerManagerMockRecorder) StartContainer(ctx, jobName, image, ports interface{}) *gomock.Call {
+func (mr *MockContainerManagerMockRecorder) StartContainer(ctx, name, image, ports, env interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartContainer", reflect.TypeOf((*MockContainerManager)(nil).StartContainer), ctx, jobName, image, ports)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartContainer", reflect.TypeOf((*MockContainerManager)(nil).StartContainer), ctx, name, image, ports, env)
 }
 
 // StopContainer mocks base method.
