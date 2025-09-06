@@ -10,6 +10,7 @@ import (
 type Pipeline struct {
 	Workflow     []*Job
 	LogsWithTime bool
+	DockerHost   string
 }
 
 func parse() (Pipeline, error) {
@@ -35,6 +36,7 @@ func parse() (Pipeline, error) {
 	}
 
 	pipeline.LogsWithTime = viper.GetBool("logsWithTime")
+	pipeline.DockerHost = viper.GetString("docker.host")
 
 	return pipeline, nil
 }

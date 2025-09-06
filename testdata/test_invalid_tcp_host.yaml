@@ -1,0 +1,10 @@
+workflow:
+  - test-job
+
+docker:
+  host: "tcp://localhost"  # Missing port, should cause validation error
+
+test-job:
+  image: alpine:latest
+  script:
+    - echo "This should not run"

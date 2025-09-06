@@ -30,7 +30,19 @@ type Runner struct {
 func (r *Runner) run(pipeline Pipeline) error {
 	r.createGlobalContext(pipeline.Workflow)
 
-	cli, err := client.NewClientWithOpts()
+	// Create Docker client with custom host if specified
+	var cli interfaces.Client
+	var err error
+	
+	if pipeline.DockerHost != "" {
+		cli, err = client.NewClientWithOpts(
+			client.WithHost(pipeline.DockerHost),
+			client.FromEnv,
+		)
+	} else {
+		cli, err = client.NewClientWithOpts()
+	}
+	
 	if err != nil {
 		return err
 	}

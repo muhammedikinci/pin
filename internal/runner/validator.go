@@ -25,6 +25,11 @@ func (v *PipelineValidator) ValidatePipeline() error {
 		return errors.New("workflow must be defined and cannot be empty")
 	}
 
+	// Validate docker host configuration if present
+	if err := v.validateDockerHost(); err != nil {
+		return err
+	}
+
 	// Validate each job in the workflow
 	for _, jobName := range workflows {
 		if err := v.validateJob(jobName); err != nil {
@@ -339,6 +344,56 @@ func (v *PipelineValidator) validateBooleanFields(configMap map[string]interface
 			if _, ok := value.(bool); !ok {
 				return fmt.Errorf("'%s' must be a boolean value", field)
 			}
+		}
+	}
+
+	return nil
+}
+
+// validateDockerHost validates the docker host configuration
+func (v *PipelineValidator) validateDockerHost() error {
+	dockerHost := viper.GetString("docker.host")
+	if dockerHost == "" {
+		return nil // docker.host is optional
+	}
+
+	// Basic docker host format validation
+	dockerHost = strings.TrimSpace(dockerHost)
+	if dockerHost == "" {
+		return errors.New("docker.host cannot be empty")
+	}
+
+	// Check for common docker host formats
+	validPrefixes := []string{
+		"tcp://",
+		"unix://",
+		"npipe://",
+		"ssh://",
+	}
+
+	hasValidPrefix := false
+	for _, prefix := range validPrefixes {
+		if strings.HasPrefix(dockerHost, prefix) {
+			hasValidPrefix = true
+			break
+		}
+	}
+
+	if !hasValidPrefix {
+		return fmt.Errorf("docker.host must start with a valid protocol (tcp://, unix://, npipe://, ssh://), got: %s", dockerHost)
+	}
+
+	// Additional validation for tcp:// format
+	if strings.HasPrefix(dockerHost, "tcp://") {
+		// Remove tcp:// prefix for validation
+		hostPart := strings.TrimPrefix(dockerHost, "tcp://")
+		if hostPart == "" {
+			return errors.New("docker.host tcp:// format requires host and port (e.g., tcp://localhost:2375)")
+		}
+		
+		// Check if it contains port
+		if !strings.Contains(hostPart, ":") {
+			return errors.New("docker.host tcp:// format must include port (e.g., tcp://localhost:2375)")
 		}
 	}
 

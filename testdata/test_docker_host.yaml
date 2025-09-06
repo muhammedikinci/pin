@@ -1,0 +1,11 @@
+workflow:
+  - test-job
+
+docker:
+  host: "tcp://localhost:2375"
+
+test-job:
+  image: alpine:latest
+  script:
+    - echo "Testing with custom Docker host"
+    - echo "Docker host tcp localhost 2375"

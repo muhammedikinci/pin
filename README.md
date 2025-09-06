@@ -79,6 +79,10 @@ workflow:
 
 logsWithTime: true
 
+# Optional: Specify custom Docker host
+docker:
+  host: "tcp://localhost:2375"
+
 run:
   image: golang:alpine3.15
   copyFiles: true
@@ -92,6 +96,79 @@ run:
 ```
 
 You can create separate jobs like the `run` stage and if you want to run these jobs in the pipeline you must add its name to `workflow`.
+
+## docker
+
+Configure Docker daemon connection settings.
+
+### host
+
+default: system default (usually `unix:///var/run/docker.sock` on Linux/macOS)
+
+Specify a custom Docker host to connect to a different Docker daemon. This is useful for:
+
+- **Remote Docker**: Connect to Docker running on another machine
+- **Docker Desktop**: Connect to Docker Desktop on different ports
+- **CI/CD environments**: Connect to specific Docker instances
+- **Development**: Switch between local and remote Docker instances
+
+### Supported Docker Host Formats
+
+```yaml
+# TCP connection to remote Docker daemon
+docker:
+  host: "tcp://192.168.1.100:2375"
+
+# TCP connection with TLS (secure)
+docker:
+  host: "tcp://docker.example.com:2376"
+
+# Unix socket (Linux/macOS default)
+docker:
+  host: "unix:///var/run/docker.sock"
+
+# Windows named pipe
+docker:
+  host: "npipe://./pipe/docker_engine"
+
+# SSH connection to remote host
+docker:
+  host: "ssh://user@docker-host"
+```
+
+### Examples
+
+```yaml
+# Connect to local Docker Desktop
+workflow:
+  - build
+
+docker:
+  host: "tcp://localhost:2375"
+
+build:
+  image: golang:alpine
+  script:
+    - go build .
+
+# Connect to remote Docker daemon
+workflow:
+  - deploy
+
+docker:
+  host: "tcp://production-docker:2375"
+
+deploy:
+  image: alpine:latest
+  script:
+    - echo "Deploying to remote Docker"
+```
+
+### Security Notes
+
+- Use TLS (port 2376) for remote connections in production
+- Ensure Docker daemon is properly secured when exposing TCP ports
+- Consider using SSH tunneling for secure remote connections
 
 ## copyFiles
 
