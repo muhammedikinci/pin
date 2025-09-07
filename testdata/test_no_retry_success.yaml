@@ -1,0 +1,11 @@
+workflow:
+  - success-job
+
+success-job:
+  image: alpine:latest
+  retry:
+    attempts: 3
+    delay: 1
+  script:
+    - echo "This job succeeds on first try"
+    - echo "No retry needed"

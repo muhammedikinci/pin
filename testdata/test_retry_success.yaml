@@ -1,0 +1,11 @@
+workflow:
+  - eventual-success
+
+eventual-success:
+  image: alpine:latest
+  retry:
+    attempts: 3
+    delay: 1
+  script:
+    - echo "Trying to succeed..."
+    - test -f /tmp/success_marker && echo "Success!" || (touch /tmp/success_marker && exit 1)

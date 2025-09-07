@@ -28,6 +28,13 @@ type Job struct {
 	Env              []string
 	ArtifactPath     string
 	Condition        string
+	RetryConfig      RetryConfig
+}
+
+type RetryConfig struct {
+	MaxAttempts int
+	DelaySeconds int
+	BackoffMultiplier float64
 }
 
 type Port struct {

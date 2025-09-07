@@ -1,0 +1,11 @@
+workflow:
+  - failing-job
+
+failing-job:
+  image: alpine:latest
+  retry:
+    attempts: 3
+    delay: 1
+  script:
+    - echo "Attempt to do something..."
+    - exit 1  # This will always fail to test retry mechanism

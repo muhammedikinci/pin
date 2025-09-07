@@ -1,0 +1,12 @@
+workflow:
+  - backoff-job
+
+backoff-job:
+  image: alpine:latest
+  retry:
+    attempts: 4
+    delay: 1
+    backoff: 2.0
+  script:
+    - echo "Attempting with exponential backoff..."
+    - exit 1  # Will fail to show retry delays: 1s, 2s, 4s

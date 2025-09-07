@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"os/signal"
 	"strings"
@@ -51,13 +52,65 @@ func (r *Runner) run(pipeline Pipeline) error {
 
 	for _, job := range pipeline.Workflow {
 		go func(job *Job) {
-			r.jobRunner(job, pipeline.LogsWithTime)
+			r.jobRunnerWithRetry(job, pipeline.LogsWithTime)
 		}(job)
 	}
 
 	err = <-pipeline.Workflow[len(pipeline.Workflow)-1].ErrorChannel
 
 	return err
+}
+
+// jobRunnerWithRetry handles job execution with retry logic
+func (r *Runner) jobRunnerWithRetry(currentJob *Job, logsWithTime bool) {
+	// Set up logging first
+	if logsWithTime {
+		currentJob.InfoLog = log.New(
+			os.Stdout,
+			fmt.Sprintf("⚉ %s ", currentJob.Name),
+			log.Ldate|log.Ltime,
+		)
+	} else {
+		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
+	}
+	
+	var lastError error
+	
+	for attempt := 1; attempt <= currentJob.RetryConfig.MaxAttempts; attempt++ {
+		// Create a copy of the job for this attempt to reset state
+		attemptJob := *currentJob
+		attemptJob.ErrorChannel = make(chan error, 1)
+		
+		// Run the job attempt
+		go r.jobRunner(&attemptJob, logsWithTime)
+		lastError = <-attemptJob.ErrorChannel
+		
+		if lastError == nil {
+			// Success - send success to original error channel
+			currentJob.ErrorChannel <- nil
+			return
+		}
+		
+		// If this was the last attempt, send the error
+		if attempt == currentJob.RetryConfig.MaxAttempts {
+			color.Set(color.FgRed)
+			currentJob.InfoLog.Printf("Job failed after %d attempts", currentJob.RetryConfig.MaxAttempts)
+			color.Unset()
+			currentJob.ErrorChannel <- lastError
+			return
+		}
+		
+		// Calculate delay with exponential backoff
+		delay := time.Duration(float64(currentJob.RetryConfig.DelaySeconds) * math.Pow(currentJob.RetryConfig.BackoffMultiplier, float64(attempt-1))) * time.Second
+		
+		color.Set(color.FgYellow)
+		currentJob.InfoLog.Printf("Job failed (attempt %d/%d), retrying in %v: %s", 
+			attempt, currentJob.RetryConfig.MaxAttempts, delay, lastError.Error())
+		color.Unset()
+		
+		// Wait before retrying
+		time.Sleep(delay)
+	}
 }
 
 func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {

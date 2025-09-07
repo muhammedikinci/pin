@@ -66,6 +66,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 	artifactPath := getString(configMap["artifactpath"])
 	condition := getString(configMap["condition"])
 	dockerfile := getString(configMap["dockerfile"])
+	retryConfig := getRetryConfig(configMap["retry"])
 
 	var job *Job = &Job{
 		Image:         image,
@@ -81,6 +82,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 		Env:           env,
 		ArtifactPath:  artifactPath,
 		Condition:     condition,
+		RetryConfig:   retryConfig,
 	}
 
 	return job, nil
@@ -202,4 +204,45 @@ func getString(val interface{}) string {
 		return ""
 	}
 	return val.(string)
+}
+
+// getRetryConfig parses retry configuration from the config map
+func getRetryConfig(retryInterface interface{}) RetryConfig {
+	// Default retry config (no retry)
+	defaultConfig := RetryConfig{
+		MaxAttempts:       1,
+		DelaySeconds:     1,
+		BackoffMultiplier: 1.0,
+	}
+
+	if retryInterface == nil {
+		return defaultConfig
+	}
+
+	retryMap, ok := retryInterface.(map[string]interface{})
+	if !ok {
+		return defaultConfig
+	}
+
+	config := defaultConfig
+
+	if maxAttempts := retryMap["attempts"]; maxAttempts != nil {
+		if attempts, ok := maxAttempts.(int); ok && attempts > 0 {
+			config.MaxAttempts = attempts
+		}
+	}
+
+	if delay := retryMap["delay"]; delay != nil {
+		if delaySeconds, ok := delay.(int); ok && delaySeconds >= 0 {
+			config.DelaySeconds = delaySeconds
+		}
+	}
+
+	if backoff := retryMap["backoff"]; backoff != nil {
+		if multiplier, ok := backoff.(float64); ok && multiplier > 0 {
+			config.BackoffMultiplier = multiplier
+		}
+	}
+
+	return config
 }

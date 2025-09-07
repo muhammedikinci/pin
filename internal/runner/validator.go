@@ -86,6 +86,10 @@ func (v *PipelineValidator) validateJob(jobName string) error {
 		return err
 	}
 
+	if err := v.validateRetryConfig(configMap); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -394,6 +398,63 @@ func (v *PipelineValidator) validateDockerHost() error {
 		// Check if it contains port
 		if !strings.Contains(hostPart, ":") {
 			return errors.New("docker.host tcp:// format must include port (e.g., tcp://localhost:2375)")
+		}
+	}
+
+	return nil
+}
+
+// validateRetryConfig validates the retry configuration
+func (v *PipelineValidator) validateRetryConfig(configMap map[string]interface{}) error {
+	retry := configMap["retry"]
+	if retry == nil {
+		return nil // retry is optional
+	}
+
+	retryMap, ok := retry.(map[string]interface{})
+	if !ok {
+		return errors.New("'retry' must be an object")
+	}
+
+	// Validate attempts
+	if attempts := retryMap["attempts"]; attempts != nil {
+		if attemptsInt, ok := attempts.(int); ok {
+			if attemptsInt < 1 {
+				return errors.New("retry.attempts must be at least 1")
+			}
+			if attemptsInt > 10 {
+				return errors.New("retry.attempts must not exceed 10 (to prevent infinite loops)")
+			}
+		} else {
+			return errors.New("retry.attempts must be an integer")
+		}
+	}
+
+	// Validate delay
+	if delay := retryMap["delay"]; delay != nil {
+		if delayInt, ok := delay.(int); ok {
+			if delayInt < 0 {
+				return errors.New("retry.delay must be non-negative")
+			}
+			if delayInt > 300 {
+				return errors.New("retry.delay must not exceed 300 seconds")
+			}
+		} else {
+			return errors.New("retry.delay must be an integer (seconds)")
+		}
+	}
+
+	// Validate backoff multiplier
+	if backoff := retryMap["backoff"]; backoff != nil {
+		if backoffFloat, ok := backoff.(float64); ok {
+			if backoffFloat <= 0 {
+				return errors.New("retry.backoff must be greater than 0")
+			}
+			if backoffFloat > 10.0 {
+				return errors.New("retry.backoff must not exceed 10.0")
+			}
+		} else {
+			return errors.New("retry.backoff must be a number")
 		}
 	}
 

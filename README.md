@@ -367,6 +367,69 @@ run:
 
 In this example, the environment variables `MY_VAR` and `ANOTHER_VAR` are set and printed during job execution.
 
+## Job Retry Mechanism
+
+Pin supports automatic job retries with configurable parameters for handling transient failures.
+
+### retry
+
+default: no retry (attempts: 1)
+
+Configure automatic retry behavior for jobs that fail due to temporary issues like network problems, resource constraints, or external service unavailability.
+
+### Retry Configuration Options
+
+```yaml
+retry:
+  attempts: 3        # Number of attempts (1-10, default: 1)
+  delay: 5          # Initial delay in seconds (0-300, default: 1)
+  backoff: 2.0      # Exponential backoff multiplier (0.1-10.0, default: 1.0)
+```
+
+### Examples
+
+```yaml
+# Simple retry - 3 attempts with 2 second delays
+workflow:
+  - unstable-service
+
+unstable-service:
+  image: alpine:latest
+  retry:
+    attempts: 3
+    delay: 2
+  script:
+    - echo "Attempting to connect to service..."
+    - curl https://unstable-api.example.com/health
+
+# Advanced retry with exponential backoff
+workflow:
+  - network-dependent
+
+network-dependent:
+  image: alpine:latest
+  retry:
+    attempts: 5      # Try 5 times total
+    delay: 1         # Start with 1 second delay
+    backoff: 2.0     # Double delay each retry (1s, 2s, 4s, 8s)
+  script:
+    - wget https://external-resource.com/data.zip
+```
+
+### Retry Behavior
+
+1. **Linear Delays**: With `backoff: 1.0`, delays remain constant
+2. **Exponential Backoff**: With `backoff > 1.0`, delays increase exponentially
+3. **Failure Logging**: Each retry attempt is logged with reason and next attempt time
+4. **Final Failure**: After all attempts fail, the job fails with the last error
+
+### Use Cases
+
+- **Network Operations**: Downloads, API calls, external service connections
+- **Resource Competition**: Database connections, file locks, temporary resource unavailability
+- **CI/CD Pipelines**: Flaky tests, temporary infrastructure issues
+- **External Dependencies**: Third-party services, cloud resources
+
 ## Conditional Execution
 
 You can specify conditions for job execution using the `condition` field. Jobs will only run if the condition evaluates to true.

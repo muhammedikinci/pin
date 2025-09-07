@@ -1,0 +1,10 @@
+workflow:
+  - invalid-retry-job
+
+invalid-retry-job:
+  image: alpine:latest
+  retry:
+    attempts: 15  # Should fail validation (max 10)
+    delay: 500    # Should fail validation (max 300)
+  script:
+    - echo "This should not run"
