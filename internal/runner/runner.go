@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/fatih/color"
 	"github.com/muhammedikinci/pin/internal/container_manager"
@@ -39,9 +39,13 @@ func (r *Runner) run(pipeline Pipeline) error {
 		cli, err = client.NewClientWithOpts(
 			client.WithHost(pipeline.DockerHost),
 			client.FromEnv,
+			client.WithAPIVersionNegotiation(),
 		)
 	} else {
-		cli, err = client.NewClientWithOpts()
+		cli, err = client.NewClientWithOpts(
+			client.FromEnv,
+			client.WithAPIVersionNegotiation(),
+		)
 	}
 	
 	if err != nil {
@@ -213,7 +217,7 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	currentJob.InfoLog.Println("Starting the container")
 	color.Unset()
 
-	if err := r.cli.ContainerStart(r.ctx, currentJob.Container.ID, types.ContainerStartOptions{}); err != nil {
+	if err := r.cli.ContainerStart(r.ctx, currentJob.Container.ID, container.StartOptions{}); err != nil {
 		currentJob.ErrorChannel <- err
 		return
 	}
@@ -264,7 +268,7 @@ func (r Runner) commandScriptExecutor(currentJob Job) error {
 			currentJob.Container.ID,
 			"/home/",
 			buf,
-			types.CopyToContainerOptions{},
+			container.CopyToContainerOptions{},
 		)
 		if err != nil {
 			return err
@@ -297,7 +301,7 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		currentJob.InfoLog.Println("soloExecution disabled, shell command started!")
 	}
 
-	exec, err := r.cli.ContainerExecCreate(r.ctx, currentJob.Container.ID, types.ExecConfig{
+	exec, err := r.cli.ContainerExecCreate(r.ctx, currentJob.Container.ID, container.ExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
@@ -307,7 +311,7 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		return err
 	}
 
-	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, types.ExecStartCheck{Tty: true})
+	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, container.ExecAttachOptions{Tty: true})
 	if err != nil {
 		return err
 	}
@@ -367,7 +371,7 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 func (r Runner) internalExec(command string, currentJob Job) error {
 	args := strings.Split(command, " ")
 
-	exec, err := r.cli.ContainerExecCreate(r.ctx, currentJob.Container.ID, types.ExecConfig{
+	exec, err := r.cli.ContainerExecCreate(r.ctx, currentJob.Container.ID, container.ExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		Cmd:          args,
@@ -377,7 +381,7 @@ func (r Runner) internalExec(command string, currentJob Job) error {
 		return err
 	}
 
-	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, types.ExecStartCheck{Tty: true})
+	res, err := r.cli.ContainerExecAttach(r.ctx, exec.ID, container.ExecAttachOptions{Tty: true})
 	if err != nil {
 		return err
 	}

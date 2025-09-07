@@ -8,10 +8,10 @@ import (
 	context "context"
 	io "io"
 	reflect "reflect"
-	time "time"
 
 	types "github.com/docker/docker/api/types"
 	container "github.com/docker/docker/api/types/container"
+	image "github.com/docker/docker/api/types/image"
 	network "github.com/docker/docker/api/types/network"
 	gomock "github.com/golang/mock/gomock"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -41,10 +41,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // ContainerCreate mocks base method.
-func (m *MockClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.ContainerCreateCreatedBody, error) {
+func (m *MockClient) ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *v1.Platform, containerName string) (container.CreateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerCreate", ctx, config, hostConfig, networkingConfig, platform, containerName)
-	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
+	ret0, _ := ret[0].(container.CreateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -56,7 +56,7 @@ func (mr *MockClientMockRecorder) ContainerCreate(ctx, config, hostConfig, netwo
 }
 
 // ContainerExecAttach mocks base method.
-func (m *MockClient) ContainerExecAttach(ctx context.Context, execID string, config types.ExecStartCheck) (types.HijackedResponse, error) {
+func (m *MockClient) ContainerExecAttach(ctx context.Context, execID string, config container.ExecAttachOptions) (types.HijackedResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerExecAttach", ctx, execID, config)
 	ret0, _ := ret[0].(types.HijackedResponse)
@@ -71,7 +71,7 @@ func (mr *MockClientMockRecorder) ContainerExecAttach(ctx, execID, config interf
 }
 
 // ContainerExecCreate mocks base method.
-func (m *MockClient) ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error) {
+func (m *MockClient) ContainerExecCreate(ctx context.Context, container string, config container.ExecOptions) (types.IDResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerExecCreate", ctx, container, config)
 	ret0, _ := ret[0].(types.IDResponse)
@@ -86,10 +86,10 @@ func (mr *MockClientMockRecorder) ContainerExecCreate(ctx, container, config int
 }
 
 // ContainerExecInspect mocks base method.
-func (m *MockClient) ContainerExecInspect(ctx context.Context, execID string) (types.ContainerExecInspect, error) {
+func (m *MockClient) ContainerExecInspect(ctx context.Context, execID string) (container.ExecInspect, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerExecInspect", ctx, execID)
-	ret0, _ := ret[0].(types.ContainerExecInspect)
+	ret0, _ := ret[0].(container.ExecInspect)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -115,7 +115,7 @@ func (mr *MockClientMockRecorder) ContainerKill(ctx, containerID, signal interfa
 }
 
 // ContainerRemove mocks base method.
-func (m *MockClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+func (m *MockClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerRemove", ctx, containerID, options)
 	ret0, _ := ret[0].(error)
@@ -129,7 +129,7 @@ func (mr *MockClientMockRecorder) ContainerRemove(ctx, containerID, options inte
 }
 
 // ContainerStart mocks base method.
-func (m *MockClient) ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error {
+func (m *MockClient) ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ContainerStart", ctx, containerID, options)
 	ret0, _ := ret[0].(error)
@@ -143,25 +143,25 @@ func (mr *MockClientMockRecorder) ContainerStart(ctx, containerID, options inter
 }
 
 // ContainerStop mocks base method.
-func (m *MockClient) ContainerStop(ctx context.Context, containerID string, timeout *time.Duration) error {
+func (m *MockClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ContainerStop", ctx, containerID, timeout)
+	ret := m.ctrl.Call(m, "ContainerStop", ctx, containerID, options)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ContainerStop indicates an expected call of ContainerStop.
-func (mr *MockClientMockRecorder) ContainerStop(ctx, containerID, timeout interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) ContainerStop(ctx, containerID, options interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerStop", reflect.TypeOf((*MockClient)(nil).ContainerStop), ctx, containerID, timeout)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ContainerStop", reflect.TypeOf((*MockClient)(nil).ContainerStop), ctx, containerID, options)
 }
 
 // CopyFromContainer mocks base method.
-func (m *MockClient) CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, types.ContainerPathStat, error) {
+func (m *MockClient) CopyFromContainer(ctx context.Context, containerID, srcPath string) (io.ReadCloser, container.PathStat, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyFromContainer", ctx, containerID, srcPath)
 	ret0, _ := ret[0].(io.ReadCloser)
-	ret1, _ := ret[1].(types.ContainerPathStat)
+	ret1, _ := ret[1].(container.PathStat)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
@@ -173,7 +173,7 @@ func (mr *MockClientMockRecorder) CopyFromContainer(ctx, containerID, srcPath in
 }
 
 // CopyToContainer mocks base method.
-func (m *MockClient) CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader, options types.CopyToContainerOptions) error {
+func (m *MockClient) CopyToContainer(ctx context.Context, containerID, dstPath string, content io.Reader, options container.CopyToContainerOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CopyToContainer", ctx, containerID, dstPath, content, options)
 	ret0, _ := ret[0].(error)
@@ -202,10 +202,10 @@ func (mr *MockClientMockRecorder) ImageBuild(ctx, buildContext, options interfac
 }
 
 // ImageList mocks base method.
-func (m *MockClient) ImageList(ctx context.Context, options types.ImageListOptions) ([]types.ImageSummary, error) {
+func (m *MockClient) ImageList(ctx context.Context, options image.ListOptions) ([]image.Summary, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImageList", ctx, options)
-	ret0, _ := ret[0].([]types.ImageSummary)
+	ret0, _ := ret[0].([]image.Summary)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -217,7 +217,7 @@ func (mr *MockClientMockRecorder) ImageList(ctx, options interface{}) *gomock.Ca
 }
 
 // ImagePull mocks base method.
-func (m *MockClient) ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error) {
+func (m *MockClient) ImagePull(ctx context.Context, refStr string, options image.PullOptions) (io.ReadCloser, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ImagePull", ctx, refStr, options)
 	ret0, _ := ret[0].(io.ReadCloser)

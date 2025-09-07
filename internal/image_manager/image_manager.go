@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	imagetypes "github.com/docker/docker/api/types/image"
 	"github.com/fatih/color"
 	"github.com/muhammedikinci/pin/internal/interfaces"
 )
@@ -35,18 +36,20 @@ type imagePullingResult struct {
 }
 
 func (im imageManager) CheckTheImageAvailable(ctx context.Context, image string) (bool, error) {
-	images, err := im.cli.ImageList(ctx, types.ImageListOptions{})
+	images, err := im.cli.ImageList(ctx, imagetypes.ListOptions{})
 
 	if err != nil {
 		return false, err
 	}
 
 	for _, v := range images {
-		if image == v.RepoTags[0] {
-			color.Set(color.FgGreen)
-			im.log.Println("Image is available")
-			color.Unset()
-			return true, nil
+		for _, tag := range v.RepoTags {
+			if image == tag {
+				color.Set(color.FgGreen)
+				im.log.Println("Image is available")
+				color.Unset()
+				return true, nil
+			}
 		}
 	}
 
@@ -60,7 +63,7 @@ func (im imageManager) PullImage(ctx context.Context, image string) error {
 
 	im.log.Println("Waiting for docker response...")
 
-	reader, err := im.cli.ImagePull(ctx, image, types.ImagePullOptions{})
+	reader, err := im.cli.ImagePull(ctx, image, imagetypes.PullOptions{})
 
 	if err != nil {
 		return err

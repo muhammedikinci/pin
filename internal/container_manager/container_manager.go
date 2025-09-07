@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/fatih/color"
@@ -37,7 +36,7 @@ func (cm containerManager) StartContainer(
 	image string,
 	ports map[string]string,
 	env []string,
-) (container.ContainerCreateCreatedBody, error) {
+) (container.CreateResponse, error) {
 	color.Set(color.FgGreen)
 	cm.log.Println("Start creating container")
 	color.Unset()
@@ -89,7 +88,7 @@ func (cm containerManager) StartContainer(
 		Env:          env,
 	}, hostConfig, nil, nil, containerName)
 	if err != nil {
-		return container.ContainerCreateCreatedBody{}, err
+		return container.CreateResponse{}, err
 	}
 
 	return resp, nil
@@ -99,7 +98,7 @@ func (cm containerManager) StopContainer(ctx context.Context, containerID string
 	color.Set(color.FgBlue)
 	cm.log.Println("Container stopping")
 
-	if err := cm.cli.ContainerStop(ctx, containerID, nil); err != nil {
+	if err := cm.cli.ContainerStop(ctx, containerID, container.StopOptions{}); err != nil {
 		return err
 	}
 
@@ -117,7 +116,7 @@ func (cm containerManager) RemoveContainer(
 	color.Set(color.FgBlue)
 	cm.log.Println("Container removing")
 
-	if err := cm.cli.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{Force: forceRemove}); err != nil {
+	if err := cm.cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: forceRemove}); err != nil {
 		return err
 	}
 
@@ -146,7 +145,7 @@ func (cm containerManager) CopyToContainer(
 		return err
 	}
 
-	err = cm.cli.CopyToContainer(ctx, containerID, workDir, &buf, types.CopyToContainerOptions{})
+	err = cm.cli.CopyToContainer(ctx, containerID, workDir, &buf, container.CopyToContainerOptions{})
 	if err != nil {
 		return err
 	}

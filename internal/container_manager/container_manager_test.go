@@ -36,7 +36,7 @@ func TestWhenContainerCreateReturnErrorStartContainerMustReturnSameError(t *test
 	mockCli.
 		EXPECT().
 		ContainerCreate(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(container.ContainerCreateCreatedBody{}, merror)
+		Return(container.CreateResponse{}, merror)
 
 	cm := containerManager{
 		cli: mockCli,
@@ -45,7 +45,7 @@ func TestWhenContainerCreateReturnErrorStartContainerMustReturnSameError(t *test
 
 	resp, err := cm.StartContainer(context.Background(), "", "", map[string]string{}, []string{})
 
-	assert.Equal(t, resp, container.ContainerCreateCreatedBody{})
+	assert.Equal(t, resp, container.CreateResponse{})
 	assert.Equal(t, err, merror)
 }
 
@@ -57,7 +57,7 @@ func TestWhenContainerCreateReturnResponseStartContainerMustSameResponseWithNilE
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
 
-	mres := container.ContainerCreateCreatedBody{
+	mres := container.CreateResponse{
 		ID: "test",
 	}
 

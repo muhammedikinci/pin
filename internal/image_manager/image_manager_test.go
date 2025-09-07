@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docker/docker/api/types"
+	imagetypes "github.com/docker/docker/api/types/image"
 	"github.com/golang/mock/gomock"
 	"github.com/muhammedikinci/pin/internal/mocks"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ func TestWhenImageListReturnAnyErrorCheckTheImageAvailableMustReturnFalseAndCliE
 	mockLog := mocks.NewMockLog(ctrl)
 
 	merr := errors.New("test")
-	mimages := []types.ImageSummary{}
+	mimages := []imagetypes.Summary{}
 
 	mockCli.
 		EXPECT().
@@ -51,7 +51,7 @@ func TestWhenCheckTheImageAvailableCallsWithDoesntExistImageMustReturnFalseAndNi
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
 
-	mimages := []types.ImageSummary{
+	mimages := []imagetypes.Summary{
 		{
 			RepoTags: []string{"asd"},
 		},
@@ -81,7 +81,7 @@ func TestWhenCheckTheImageAvailableCallsWithExistImageMustReturnTrueAndNilError(
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
 
-	mimages := []types.ImageSummary{
+	mimages := []imagetypes.Summary{
 		{
 			RepoTags: []string{"image1"},
 		},

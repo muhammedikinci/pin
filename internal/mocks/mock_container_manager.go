@@ -78,10 +78,10 @@ func (mr *MockContainerManagerMockRecorder) RemoveContainer(ctx, containerID, fo
 }
 
 // StartContainer mocks base method.
-func (m *MockContainerManager) StartContainer(ctx context.Context, name, image string, ports map[string]string, env []string) (container.ContainerCreateCreatedBody, error) {
+func (m *MockContainerManager) StartContainer(ctx context.Context, name, image string, ports map[string]string, env []string) (container.CreateResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StartContainer", ctx, name, image, ports, env)
-	ret0, _ := ret[0].(container.ContainerCreateCreatedBody)
+	ret0, _ := ret[0].(container.CreateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

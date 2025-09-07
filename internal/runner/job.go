@@ -20,7 +20,7 @@ type Job struct {
 	IsParallel       bool
 	Previous         *Job
 	ErrorChannel     chan error
-	Container        container.ContainerCreateCreatedBody
+	Container        container.CreateResponse
 	InfoLog          *log.Logger
 	ImageManager     interfaces.ImageManager
 	ContainerManager interfaces.ContainerManager

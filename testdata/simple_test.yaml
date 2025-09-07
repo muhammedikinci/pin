@@ -1,0 +1,8 @@
+workflow:
+  - hello
+
+hello:
+  image: alpine:latest
+  script:
+    - echo "Hello World from PIN!"
+    - echo "Test successful"
