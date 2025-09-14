@@ -6,11 +6,99 @@
 
 # pin 🔥 [![pipeline](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)](https://github.com/muhammedikinci/pin/actions/workflows/go.yml)
 
-WIP - Local pipeline project with Docker Golang API.
+Local pipeline project with Docker Golang API. Run pipelines locally or as a daemon with real-time monitoring.
 
 ![pingif](asset/pin.gif)
 
 <sup><sup>terminal from [terminalgif.com](https://terminalgif.com)</sup></sup>
+
+## 🚀 Daemon Mode & Real-time Monitoring
+
+Pin can run as a long-running daemon service with SSE (Server-Sent Events) support for real-time pipeline monitoring and HTTP-triggered execution.
+
+### Key Features
+
+- **Long-running service**: Keep pin running as a daemon
+- **HTTP API**: Trigger pipelines via REST endpoints
+- **Real-time events**: Monitor pipeline execution via Server-Sent Events
+- **Remote monitoring**: Connect from multiple clients simultaneously
+- **Production ready**: Graceful shutdown and error handling
+
+### Architecture Overview
+
+![pingif](asset/pindaemon.svg)
+
+### Quick Start
+
+```bash
+# Start daemon mode
+pin apply --daemon
+
+# Trigger pipeline from another terminal
+curl -X POST -H "Content-Type: application/yaml" \
+  --data-binary @pipeline.yaml \
+  http://localhost:8081/trigger
+
+# Monitor real-time events
+curl -N http://localhost:8081/events
+```
+
+### HTTP Endpoints
+
+| Endpoint   | Method | Description                                     |
+| ---------- | ------ | ----------------------------------------------- |
+| `/events`  | GET    | Server-Sent Events stream for real-time updates |
+| `/health`  | GET    | Health check and connected client count         |
+| `/trigger` | POST   | Trigger pipeline execution with YAML config     |
+| `/`        | GET    | API information and available endpoints         |
+
+### Real-time Events
+
+The daemon broadcasts various events during pipeline execution:
+
+- **daemon_start**: Service started successfully
+- **pipeline_trigger**: New pipeline execution requested
+- **job_container_start**: Container started for job
+- **log**: Real-time log messages from jobs
+- **job_completed**: Job finished successfully
+- **job_failed**: Job failed with error details
+- **pipeline_complete**: Entire pipeline finished
+- **daemon_stop**: Service shutting down
+
+### Example Event Stream
+
+```javascript
+// Connect to event stream
+const eventSource = new EventSource("http://localhost:8081/events");
+
+eventSource.onmessage = function (event) {
+  const data = JSON.parse(event.data);
+  console.log(`[${data.level}] ${data.message}`);
+};
+
+// Events received:
+// {"level":"info","message":"Pipeline execution started","job":"build"}
+// {"level":"info","message":"Container started","job":"build"}
+// {"level":"success","message":"Job completed successfully","job":"build"}
+```
+
+### Production Usage
+
+```bash
+# Run daemon with specific pipeline
+pin apply --daemon -f production.yaml
+
+# Run daemon without initial pipeline (HTTP-only mode)
+pin apply --daemon
+
+# Monitor from remote machine
+curl -N http://your-server:8081/events
+
+# Trigger deployments via API
+curl -X POST -H "Content-Type: application/yaml" \
+  --data-binary @deployment.yaml \
+  http://your-server:8081/trigger
+```
 
 # 🌐 Installation
 
@@ -53,7 +141,7 @@ Pin includes built-in YAML validation to catch configuration errors before pipel
 Pin automatically validates your pipeline configuration before execution:
 
 - ✅ **Required fields**: Ensures either `image` or `dockerfile` is specified
-- ✅ **Field types**: Validates all fields have correct data types  
+- ✅ **Field types**: Validates all fields have correct data types
 - ✅ **Port formats**: Checks port configurations match supported formats
 - ✅ **Script validation**: Ensures scripts are not empty
 - ✅ **Boolean fields**: Validates boolean configurations
@@ -381,9 +469,9 @@ Configure automatic retry behavior for jobs that fail due to temporary issues li
 
 ```yaml
 retry:
-  attempts: 3        # Number of attempts (1-10, default: 1)
-  delay: 5          # Initial delay in seconds (0-300, default: 1)
-  backoff: 2.0      # Exponential backoff multiplier (0.1-10.0, default: 1.0)
+  attempts: 3 # Number of attempts (1-10, default: 1)
+  delay: 5 # Initial delay in seconds (0-300, default: 1)
+  backoff: 2.0 # Exponential backoff multiplier (0.1-10.0, default: 1.0)
 ```
 
 ### Examples
@@ -553,4 +641,3 @@ go test ./...
 # Contact
 
 Muhammed İkinci - muhammedikinci@outlook.com
-

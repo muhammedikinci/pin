@@ -21,11 +21,17 @@ import (
 	"github.com/muhammedikinci/pin/internal/image_manager"
 	"github.com/muhammedikinci/pin/internal/interfaces"
 	"github.com/muhammedikinci/pin/internal/shell_commander"
+	"github.com/muhammedikinci/pin/internal/sse"
 )
 
 type Runner struct {
 	ctx context.Context
 	cli interfaces.Client
+}
+
+// RunPipeline runs the given pipeline
+func (r *Runner) RunPipeline(pipeline Pipeline) error {
+	return r.run(pipeline)
 }
 
 func (r *Runner) run(pipeline Pipeline) error {
@@ -67,16 +73,8 @@ func (r *Runner) run(pipeline Pipeline) error {
 
 // jobRunnerWithRetry handles job execution with retry logic
 func (r *Runner) jobRunnerWithRetry(currentJob *Job, logsWithTime bool) {
-	// Set up logging first
-	if logsWithTime {
-		currentJob.InfoLog = log.New(
-			os.Stdout,
-			fmt.Sprintf("⚉ %s ", currentJob.Name),
-			log.Ldate|log.Ltime,
-		)
-	} else {
-		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
-	}
+	// Set up logging first - use event-aware logger if broadcaster is available
+	r.setupJobLogging(currentJob, logsWithTime)
 	
 	var lastError error
 	
@@ -100,6 +98,16 @@ func (r *Runner) jobRunnerWithRetry(currentJob *Job, logsWithTime bool) {
 			color.Set(color.FgRed)
 			currentJob.InfoLog.Printf("Job failed after %d attempts", currentJob.RetryConfig.MaxAttempts)
 			color.Unset()
+			
+			// Broadcast job failure event
+			if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
+				eventLogger.BroadcastJobEvent("job_failed", map[string]interface{}{
+					"status":       "failed",
+					"error":        lastError.Error(),
+					"max_attempts": currentJob.RetryConfig.MaxAttempts,
+				})
+			}
+			
 			currentJob.ErrorChannel <- lastError
 			return
 		}
@@ -118,15 +126,8 @@ func (r *Runner) jobRunnerWithRetry(currentJob *Job, logsWithTime bool) {
 }
 
 func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
-	if logsWithTime {
-		currentJob.InfoLog = log.New(
-			os.Stdout,
-			fmt.Sprintf("⚉ %s ", currentJob.Name),
-			log.Ldate|log.Ltime,
-		)
-	} else {
-		currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
-	}
+	// Set up logging - use event-aware logger if broadcaster is available
+	r.setupJobLogging(currentJob, logsWithTime)
 
 	currentJob.ImageManager = image_manager.NewImageManager(r.cli, currentJob.InfoLog)
 	currentJob.ContainerManager = container_manager.NewContainerManager(r.cli, currentJob.InfoLog)
@@ -216,6 +217,14 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	color.Set(color.FgGreen)
 	currentJob.InfoLog.Println("Starting the container")
 	color.Unset()
+	
+	// Broadcast job start event
+	if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
+		eventLogger.BroadcastJobEvent("job_container_start", map[string]interface{}{
+			"container_id": currentJob.Container.ID,
+			"image":        currentJob.Image,
+		})
+	}
 
 	if err := r.cli.ContainerStart(r.ctx, currentJob.Container.ID, container.StartOptions{}); err != nil {
 		currentJob.ErrorChannel <- err
@@ -247,6 +256,13 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	color.Set(color.FgGreen)
 	currentJob.InfoLog.Println("Job ended")
 	color.Unset()
+	
+	// Broadcast job completion event
+	if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
+		eventLogger.BroadcastJobEvent("job_completed", map[string]interface{}{
+			"status": "success",
+		})
+	}
 
 	currentJob.ErrorChannel <- nil
 }
@@ -418,4 +434,40 @@ func (r *Runner) createGlobalContext(jobs []*Job) {
 	}()
 
 	r.ctx = ctx
+}
+
+// setupJobLogging initializes logging for a job, using event-aware logger if broadcaster is available
+func (r *Runner) setupJobLogging(currentJob *Job, logsWithTime bool) {
+	broadcaster := sse.GetGlobalBroadcaster()
+	
+	if broadcaster != nil {
+		// Use event-aware logger
+		var flag int
+		if logsWithTime {
+			flag = log.Ldate | log.Ltime
+		} else {
+			flag = 0
+		}
+		
+		eventLogger := sse.NewEventLogger(
+			broadcaster, 
+			currentJob.Name, 
+			fmt.Sprintf("⚉ %s ", currentJob.Name), 
+			flag,
+		)
+		
+		// The EventLogger embeds a *log.Logger, so it can be used as interfaces.Log
+		currentJob.InfoLog = eventLogger
+	} else {
+		// Use standard logger
+		if logsWithTime {
+			currentJob.InfoLog = log.New(
+				os.Stdout,
+				fmt.Sprintf("⚉ %s ", currentJob.Name),
+				log.Ldate|log.Ltime,
+			)
+		} else {
+			currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
+		}
+	}
 }

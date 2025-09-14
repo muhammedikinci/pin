@@ -13,6 +13,11 @@ type Pipeline struct {
 	DockerHost   string
 }
 
+// ParseFromViper parses pipeline from the current viper configuration
+func ParseFromViper() (Pipeline, error) {
+	return parse()
+}
+
 func parse() (Pipeline, error) {
 	var pipeline Pipeline = Pipeline{}
 

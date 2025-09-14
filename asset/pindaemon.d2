@@ -1,0 +1,26 @@
+client1: Client 1 {
+  browser: Web Browser
+  terminal: Terminal/CLI
+}
+
+client2: Client 2 {
+  browser: Web Browser
+  terminal: Terminal/CLI
+}
+
+pin_daemon: PIN Daemon {
+  sse_server: SSE Server\n:8081
+  pipeline_engine: Pipeline Engine
+  event_broadcaster: Event Broadcaster
+}
+
+docker: Docker Engine
+
+client1.browser -> pin_daemon.sse_server: /events (SSE)
+client1.terminal -> pin_daemon.sse_server: /trigger (HTTP POST)
+client2.browser -> pin_daemon.sse_server: /events (SSE)
+client2.terminal -> pin_daemon.sse_server: /health (HTTP GET)
+
+pin_daemon.event_broadcaster -> client1.browser: pipeline events
+pin_daemon.event_broadcaster -> client2.browser: pipeline events
+pin_daemon.pipeline_engine -> docker: container operations

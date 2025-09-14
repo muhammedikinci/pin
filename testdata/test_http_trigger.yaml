@@ -1,0 +1,18 @@
+# Test pipeline for SSE daemon mode HTTP trigger functionality
+# This pipeline tests the /trigger endpoint by running simple commands
+# Usage: curl -X POST -H "Content-Type: application/yaml" --data-binary @testdata/test_http_trigger.yaml http://localhost:8081/trigger
+
+workflow:
+  - test_http_trigger_job
+
+test_http_trigger_job:
+  image: "alpine:latest"
+  script:
+    - "echo 'Hello from HTTP triggered pipeline!'"
+    - "date"
+    - "whoami"
+    - "echo 'SSE daemon mode test completed successfully'"
+  workdir: "/root"
+  soloexecution: true
+
+logsWithTime: true

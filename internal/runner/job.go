@@ -1,8 +1,6 @@
 package runner
 
 import (
-	"log"
-
 	"github.com/docker/docker/api/types/container"
 	"github.com/muhammedikinci/pin/internal/interfaces"
 )
@@ -21,7 +19,7 @@ type Job struct {
 	Previous         *Job
 	ErrorChannel     chan error
 	Container        container.CreateResponse
-	InfoLog          *log.Logger
+	InfoLog          interfaces.Log
 	ImageManager     interfaces.ImageManager
 	ContainerManager interfaces.ContainerManager
 	ShellCommander   interfaces.ShellCommander
