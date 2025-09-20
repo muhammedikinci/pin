@@ -1,0 +1,9 @@
+workflow:
+  - invalid-job
+
+invalid-job:
+  # Missing image or dockerfile - will trigger enhanced error
+  script:
+    - echo "This job is missing image/dockerfile"
+  port:
+    - "invalid:port:format:here"  # Invalid port format

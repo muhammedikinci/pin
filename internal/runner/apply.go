@@ -3,7 +3,6 @@ package runner
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	pinerrors "github.com/muhammedikinci/pin/internal/errors"
 	"github.com/muhammedikinci/pin/internal/interfaces"
 	"github.com/muhammedikinci/pin/internal/sse"
 	"github.com/spf13/viper"
@@ -30,37 +30,70 @@ func Apply(filepath string) error {
 	// Validate pipeline configuration before execution
 	validator := NewPipelineValidator()
 	if err := validator.ValidatePipeline(); err != nil {
-		color.Set(color.FgRed)
-		fmt.Printf("Pipeline validation failed: %s\n", err.Error())
-		color.Unset()
+		// Format and display the error using our enhanced error reporting
+		if pinErr, ok := err.(*pinerrors.PinError); ok {
+			fmt.Print(pinerrors.ConsoleFormatter.Format(pinErr))
+		} else {
+			// Fallback for non-PinError errors
+			color.Set(color.FgRed)
+			fmt.Printf("Pipeline validation failed: %s\n", err.Error())
+			color.Unset()
+		}
 		return err
 	}
 
 	color.Set(color.FgGreen)
-	fmt.Println("Pipeline validation successful")
+	fmt.Println("✅ Pipeline validation successful")
 	color.Unset()
 
 	pipeline, err := parse()
 	if err != nil {
-		fmt.Println(err)
+		// Enhanced error handling for parse errors
+		if pinErr, ok := err.(*pinerrors.PinError); ok {
+			fmt.Print(pinerrors.ConsoleFormatter.Format(pinErr))
+		} else {
+			// Create enhanced error for unknown parse errors
+			parseErr := pinerrors.NewPinError(pinerrors.ErrCodePipelineValidation, "failed to parse pipeline configuration").
+				WithCause(err).
+				AddSuggestions(
+					"Check YAML syntax and formatting",
+					"Ensure all required fields are present",
+					"Validate YAML using an online validator",
+				)
+			fmt.Print(pinerrors.ConsoleFormatter.Format(parseErr))
+		}
 		return err
 	}
 
 	currentRunner := Runner{}
 
 	if err := currentRunner.run(pipeline); err != nil {
-		fmt.Println(err.Error())
+		// Enhanced error handling for execution errors
+		if pinErr, ok := err.(*pinerrors.PinError); ok {
+			fmt.Print(pinerrors.ConsoleFormatter.Format(pinErr))
+		} else {
+			// Create enhanced error for unknown execution errors
+			execErr := pinerrors.NewPinError(pinerrors.ErrCodeJobExecution, "pipeline execution failed").
+				WithCause(err).
+				AddSuggestions(
+					"Check Docker daemon is running",
+					"Verify all required images are available",
+					"Review script commands for errors",
+					"Enable verbose logging with 'logsWithTime: true'",
+				)
+			fmt.Print(pinerrors.ConsoleFormatter.Format(execErr))
+		}
 		return err
 	}
 
 	color.Unset()
-
 	return nil
 }
 
 func checkFileExists(filepath string) error {
-	if _, err := os.Stat(filepath); errors.Is(err, os.ErrNotExist) {
-		return err
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		fileBuilder := pinerrors.NewFileErrorBuilder()
+		return fileBuilder.FileNotFound(filepath, err)
 	}
 
 	return nil
@@ -69,14 +102,27 @@ func checkFileExists(filepath string) error {
 func readConfig(filepath string) error {
 	fileBytes, err := os.ReadFile(filepath)
 	if err != nil {
-		return err
+		if os.IsPermission(err) {
+			fileBuilder := pinerrors.NewFileErrorBuilder()
+			return fileBuilder.PermissionDenied(filepath, err)
+		}
+		fileBuilder := pinerrors.NewFileErrorBuilder()
+		return fileBuilder.FileNotFound(filepath, err)
 	}
 
 	viper.SetConfigType("yaml")
 
 	err = viper.ReadConfig(bytes.NewBuffer(fileBytes))
 	if err != nil {
-		return err
+		return pinerrors.NewPinError(pinerrors.ErrCodeInvalidConfig, "failed to parse YAML configuration").
+			WithFile(filepath).
+			WithCause(err).
+			AddSuggestions(
+				"Check YAML syntax - ensure proper indentation",
+				"Validate YAML format using an online validator",
+				"Ensure no tabs are used (use spaces for indentation)",
+				"Check for missing quotes around strings with special characters",
+			)
 	}
 
 	return nil

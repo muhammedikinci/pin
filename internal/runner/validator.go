@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	pinerrors "github.com/muhammedikinci/pin/internal/errors"
 	"github.com/spf13/viper"
 )
 
@@ -33,6 +34,9 @@ func (v *PipelineValidator) ValidatePipeline() error {
 	// Validate each job in the workflow
 	for _, jobName := range workflows {
 		if err := v.validateJob(jobName); err != nil {
+			if pinErr, ok := err.(*pinerrors.PinError); ok {
+				return pinErr.WithJob(jobName)
+			}
 			return fmt.Errorf("validation error in job '%s': %w", jobName, err)
 		}
 	}
@@ -99,7 +103,8 @@ func (v *PipelineValidator) validateImageOrDockerfile(configMap map[string]inter
 	dockerfile := configMap["dockerfile"]
 
 	if image == nil && dockerfile == nil {
-		return errors.New("either 'image' or 'dockerfile' must be specified")
+		validationBuilder := pinerrors.NewValidationErrorBuilder()
+		return validationBuilder.MissingImageOrDockerfile("")
 	}
 
 	if image != nil && dockerfile != nil {
