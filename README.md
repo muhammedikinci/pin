@@ -638,6 +638,25 @@ CMD ["/bin/bash"]
 go test ./...
 ```
 
+## 📚 Documentation
+
+For comprehensive documentation, examples, and guides:
+
+- **[📖 Complete Documentation](docs/README.md)** - Full documentation index
+- **[🚀 Examples](docs/examples.md)** - Practical examples and use cases
+- **[🌐 API Reference](docs/api-reference.md)** - HTTP API documentation for daemon mode
+- **[🔧 Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
+- **[🎯 Use Cases](docs/use-cases.md)** - Real-world applications and workflows
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📞 Support
+
+- [GitHub Issues](https://github.com/muhammedikinci/pin/issues) - Bug reports and feature requests
+- [GitHub Discussions](https://github.com/muhammedikinci/pin/discussions) - Community discussions
+
 # Contact
 
 Muhammed İkinci - muhammedikinci@outlook.com
