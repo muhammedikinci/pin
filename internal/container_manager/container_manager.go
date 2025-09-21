@@ -15,22 +15,23 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/fatih/color"
-	"github.com/muhammedikinci/pin/internal/interfaces"
+	"github.com/muhammedikinci/pin/internal/client"
+	"github.com/muhammedikinci/pin/internal/log"
 )
 
-type containerManager struct {
-	cli interfaces.Client
-	log interfaces.Log
+type containerManagerImpl struct {
+	cli client.Client
+	log log.Log
 }
 
-func NewContainerManager(cli interfaces.Client, log interfaces.Log) containerManager {
-	return containerManager{
+func NewContainerManager(cli client.Client, log log.Log) ContainerManager {
+	return &containerManagerImpl{
 		cli: cli,
 		log: log,
 	}
 }
 
-func (cm containerManager) StartContainer(
+func (cm *containerManagerImpl) StartContainer(
 	ctx context.Context,
 	jobName string,
 	image string,
@@ -94,7 +95,7 @@ func (cm containerManager) StartContainer(
 	return resp, nil
 }
 
-func (cm containerManager) StopContainer(ctx context.Context, containerID string) error {
+func (cm *containerManagerImpl) StopContainer(ctx context.Context, containerID string) error {
 	color.Set(color.FgBlue)
 	cm.log.Println("Container stopping")
 
@@ -108,7 +109,7 @@ func (cm containerManager) StopContainer(ctx context.Context, containerID string
 	return nil
 }
 
-func (cm containerManager) RemoveContainer(
+func (cm *containerManagerImpl) RemoveContainer(
 	ctx context.Context,
 	containerID string,
 	forceRemove bool,
@@ -126,7 +127,7 @@ func (cm containerManager) RemoveContainer(
 	return nil
 }
 
-func (cm containerManager) CopyToContainer(
+func (cm *containerManagerImpl) CopyToContainer(
 	ctx context.Context,
 	containerID, workDir string,
 	copyIgnore []string,
@@ -153,7 +154,7 @@ func (cm containerManager) CopyToContainer(
 	return nil
 }
 
-func (cm containerManager) appender(
+func (cm *containerManagerImpl) appender(
 	path string,
 	info os.FileInfo,
 	err error,
@@ -210,7 +211,7 @@ func (cm containerManager) appender(
 	return nil
 }
 
-func (cm containerManager) CopyFromContainer(
+func (cm *containerManagerImpl) CopyFromContainer(
 	ctx context.Context,
 	containerID string,
 	srcPath string,

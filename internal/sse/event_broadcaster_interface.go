@@ -1,16 +1,9 @@
-package interfaces
+package sse
 
-import "time"
 
-//go:generate mockgen -source $GOFILE -destination ../mocks/mock_$GOFILE -package mocks
+//go:generate mockgen -source $GOFILE -destination ../mocks/mock_event_broadcaster.go -package mocks
 
 // Event represents a server-sent event that can be broadcasted to clients
-type Event struct {
-	ID        string                 `json:"id"`
-	Type      string                 `json:"type"`
-	Data      map[string]interface{} `json:"data"`
-	Timestamp time.Time              `json:"timestamp"`
-}
 
 // EventBroadcaster defines the interface for broadcasting events to SSE clients
 type EventBroadcaster interface {
@@ -25,4 +18,7 @@ type EventBroadcaster interface {
 	
 	// Close shuts down the event broadcaster
 	Close()
+	
+	// GetClientCount returns the number of connected clients
+	GetClientCount() int
 }

@@ -8,8 +8,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-
-	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
 // PipelineExecutor is a function type for executing pipelines from YAML
@@ -25,13 +23,13 @@ func SetPipelineExecutor(executor PipelineExecutor) {
 
 // Server represents an SSE server that can broadcast events to connected clients
 type Server struct {
-	broadcaster interfaces.EventBroadcaster
+	broadcaster EventBroadcaster
 	server      *http.Server
 	logger      *log.Logger
 }
 
 // NewServer creates a new SSE server instance
-func NewServer(port int, broadcaster interfaces.EventBroadcaster, logger *log.Logger) *Server {
+func NewServer(port int, broadcaster EventBroadcaster, logger *log.Logger) *Server {
 	if logger == nil {
 		logger = log.New(log.Writer(), "[SSE] ", log.LstdFlags)
 	}
@@ -75,7 +73,7 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 
 	// Create client channel
-	clientChan := make(chan interfaces.Event, 100) // Buffer for 100 events
+	clientChan := make(chan Event, 100) // Buffer for 100 events
 	clientID := s.broadcaster.AddClient(clientChan)
 
 	if clientID == "" {
@@ -131,20 +129,12 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	
-	if broadcaster, ok := s.broadcaster.(*EventBroadcaster); ok {
-		response := map[string]interface{}{
-			"status":     "healthy",
-			"clients":    broadcaster.GetClientCount(),
-			"timestamp":  time.Now(),
-		}
-		json.NewEncoder(w).Encode(response)
-	} else {
-		response := map[string]interface{}{
-			"status":    "healthy",
-			"timestamp": time.Now(),
-		}
-		json.NewEncoder(w).Encode(response)
+	response := map[string]interface{}{
+		"status":     "healthy",
+		"clients":    s.broadcaster.GetClientCount(),
+		"timestamp":  time.Now(),
 	}
+	json.NewEncoder(w).Encode(response)
 }
 
 // handleRoot provides information about available endpoints
@@ -187,7 +177,7 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 
 	// Broadcast pipeline trigger event
 	if s.broadcaster != nil {
-		s.broadcaster.Broadcast(interfaces.Event{
+		s.broadcaster.Broadcast(Event{
 			Type: "pipeline_trigger",
 			Data: map[string]interface{}{
 				"message": "Pipeline trigger request received",
@@ -202,7 +192,7 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		if err := s.executePipelineFromYAML(yamlContent); err != nil {
 			s.logger.Printf("Pipeline execution failed: %v", err)
 			if s.broadcaster != nil {
-				s.broadcaster.Broadcast(interfaces.Event{
+				s.broadcaster.Broadcast(Event{
 					Type: "pipeline_error",
 					Data: map[string]interface{}{
 						"message": "Pipeline execution failed",
@@ -215,7 +205,7 @@ func (s *Server) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		} else {
 			s.logger.Printf("Pipeline execution completed successfully")
 			if s.broadcaster != nil {
-				s.broadcaster.Broadcast(interfaces.Event{
+				s.broadcaster.Broadcast(Event{
 					Type: "pipeline_complete",
 					Data: map[string]interface{}{
 						"message": "Pipeline execution completed successfully",

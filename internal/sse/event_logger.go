@@ -5,20 +5,18 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
 // EventLogger wraps a standard logger and broadcasts log events via SSE
 type EventLogger struct {
 	*log.Logger
-	broadcaster interfaces.EventBroadcaster
+	broadcaster EventBroadcaster
 	jobName     string
 	logLevel    string
 }
 
 // NewEventLogger creates a new event-aware logger
-func NewEventLogger(broadcaster interfaces.EventBroadcaster, jobName string, prefix string, flag int) *EventLogger {
+func NewEventLogger(broadcaster EventBroadcaster, jobName string, prefix string, flag int) *EventLogger {
 	standardLogger := log.New(os.Stdout, prefix, flag)
 	
 	return &EventLogger{
@@ -122,7 +120,7 @@ func (el *EventLogger) Warningf(format string, v ...interface{}) {
 
 // broadcastLogEvent creates and broadcasts a log event
 func (el *EventLogger) broadcastLogEvent(level, message string) {
-	event := interfaces.Event{
+	event := Event{
 		Type: "log",
 		Data: map[string]interface{}{
 			"level":     level,
@@ -149,7 +147,7 @@ func (el *EventLogger) BroadcastJobEvent(eventType string, data map[string]inter
 	data["job"] = el.jobName
 	data["timestamp"] = time.Now()
 	
-	event := interfaces.Event{
+	event := Event{
 		Type:      eventType,
 		Data:      data,
 		Timestamp: time.Now(),

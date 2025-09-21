@@ -22,7 +22,7 @@ func TestPrepareShellCommands(t *testing.T) {
 				"go test ./...",
 			},
 			result: []string{
-				shellCommander.wrapCommand("go test ./..."),
+				"#!/bin/sh\nexec > /shell_command_output.log 2>&1\ngo test ./...",
 			},
 		},
 		{
@@ -32,8 +32,8 @@ func TestPrepareShellCommands(t *testing.T) {
 				"npm install",
 			},
 			result: []string{
-				shellCommander.wrapCommand("go test ./..."),
-				shellCommander.wrapCommand("npm install"),
+				"#!/bin/sh\nexec > /shell_command_output.log 2>&1\ngo test ./...",
+				"#!/bin/sh\nexec > /shell_command_output.log 2>&1\nnpm install",
 			},
 		},
 		{
@@ -43,7 +43,7 @@ func TestPrepareShellCommands(t *testing.T) {
 				"npm install",
 			},
 			result: []string{
-				shellCommander.wrapCommand("go test ./...\nnpm install\n"),
+				"#!/bin/sh\nexec > /shell_command_output.log 2>&1\ngo test ./...\nnpm install\n",
 			},
 		},
 		{

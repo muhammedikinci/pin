@@ -15,19 +15,20 @@ import (
 	"github.com/docker/docker/api/types"
 	imagetypes "github.com/docker/docker/api/types/image"
 	"github.com/fatih/color"
-	"github.com/muhammedikinci/pin/internal/interfaces"
+	"github.com/muhammedikinci/pin/internal/client"
+	"github.com/muhammedikinci/pin/internal/log"
 )
 
-func NewImageManager(cli interfaces.Client, log interfaces.Log) imageManager {
-	return imageManager{
+func NewImageManager(cli client.Client, log log.Log) ImageManager {
+	return &imageManagerImpl{
 		cli: cli,
 		log: log,
 	}
 }
 
-type imageManager struct {
-	cli interfaces.Client
-	log interfaces.Log
+type imageManagerImpl struct {
+	cli client.Client
+	log log.Log
 }
 
 type imagePullingResult struct {
@@ -35,7 +36,7 @@ type imagePullingResult struct {
 	Progress string `json:"progress"`
 }
 
-func (im imageManager) CheckTheImageAvailable(ctx context.Context, image string) (bool, error) {
+func (im *imageManagerImpl) CheckTheImageAvailable(ctx context.Context, image string) (bool, error) {
 	images, err := im.cli.ImageList(ctx, imagetypes.ListOptions{})
 
 	if err != nil {
@@ -56,7 +57,7 @@ func (im imageManager) CheckTheImageAvailable(ctx context.Context, image string)
 	return false, nil
 }
 
-func (im imageManager) PullImage(ctx context.Context, image string) error {
+func (im *imageManagerImpl) PullImage(ctx context.Context, image string) error {
 	color.Set(color.FgBlue)
 	im.log.Printf("Image pulling: %s", image)
 	color.Unset()
@@ -97,7 +98,7 @@ func (im imageManager) PullImage(ctx context.Context, image string) error {
 	return nil
 }
 
-func (im imageManager) BuildImageFromDockerfile(ctx context.Context, dockerfilePath string, imageName string) error {
+func (im *imageManagerImpl) BuildImageFromDockerfile(ctx context.Context, dockerfilePath string, imageName string) error {
 	color.Set(color.FgBlue)
 	im.log.Printf("Building image from Dockerfile: %s", dockerfilePath)
 	color.Unset()
@@ -148,7 +149,7 @@ func (im imageManager) BuildImageFromDockerfile(ctx context.Context, dockerfileP
 	return nil
 }
 
-func (im imageManager) createDockerfileTar(dockerfilePath string) (io.Reader, error) {
+func (im *imageManagerImpl) createDockerfileTar(dockerfilePath string) (io.Reader, error) {
 	buf := new(bytes.Buffer)
 	tw := tar.NewWriter(buf)
 	defer tw.Close()

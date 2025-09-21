@@ -5,26 +5,25 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
-// EventBroadcaster implements the interfaces.EventBroadcaster interface
+// eventBroadcaster implements the EventBroadcaster interface
 // It manages SSE client connections and broadcasts events to all connected clients
-type EventBroadcaster struct {
-	clients map[string]chan interfaces.Event
+type eventBroadcaster struct {
+	clients map[string]chan Event
 	mutex   sync.RWMutex
 	closed  bool
 }
 
 // NewEventBroadcaster creates a new event broadcaster instance
-func NewEventBroadcaster() *EventBroadcaster {
-	return &EventBroadcaster{
-		clients: make(map[string]chan interfaces.Event),
+func NewEventBroadcaster() EventBroadcaster {
+	return &eventBroadcaster{
+		clients: make(map[string]chan Event),
 	}
 }
 
 // Broadcast sends an event to all connected SSE clients
-func (eb *EventBroadcaster) Broadcast(event interfaces.Event) {
+func (eb *eventBroadcaster) Broadcast(event Event) {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
 
@@ -55,7 +54,7 @@ func (eb *EventBroadcaster) Broadcast(event interfaces.Event) {
 }
 
 // AddClient adds a new SSE client connection and returns the client ID
-func (eb *EventBroadcaster) AddClient(clientChan chan interfaces.Event) string {
+func (eb *eventBroadcaster) AddClient(clientChan chan Event) string {
 	eb.mutex.Lock()
 	defer eb.mutex.Unlock()
 
@@ -67,10 +66,13 @@ func (eb *EventBroadcaster) AddClient(clientChan chan interfaces.Event) string {
 	eb.clients[clientID] = clientChan
 
 	// Send welcome event
-	welcomeEvent := interfaces.Event{
-		ID:        uuid.New().String(),
-		Type:      "connection",
-		Data:      map[string]interface{}{"message": "Connected to PIN SSE server", "clientId": clientID},
+	welcomeEvent := Event{
+		ID:   uuid.New().String(),
+		Type: "connection",
+		Data: map[string]interface{}{
+			"message":  "Connected to PIN SSE server",
+			"clientId": clientID,
+		},
 		Timestamp: time.Now(),
 	}
 
@@ -86,7 +88,7 @@ func (eb *EventBroadcaster) AddClient(clientChan chan interfaces.Event) string {
 }
 
 // RemoveClient removes an SSE client connection
-func (eb *EventBroadcaster) RemoveClient(clientID string) {
+func (eb *eventBroadcaster) RemoveClient(clientID string) {
 	eb.mutex.Lock()
 	defer eb.mutex.Unlock()
 
@@ -97,7 +99,7 @@ func (eb *EventBroadcaster) RemoveClient(clientID string) {
 }
 
 // Close shuts down the event broadcaster and closes all client connections
-func (eb *EventBroadcaster) Close() {
+func (eb *eventBroadcaster) Close() {
 	eb.mutex.Lock()
 	defer eb.mutex.Unlock()
 
@@ -111,8 +113,9 @@ func (eb *EventBroadcaster) Close() {
 }
 
 // GetClientCount returns the number of connected clients
-func (eb *EventBroadcaster) GetClientCount() int {
+func (eb *eventBroadcaster) GetClientCount() int {
 	eb.mutex.RLock()
 	defer eb.mutex.RUnlock()
 	return len(eb.clients)
 }
+

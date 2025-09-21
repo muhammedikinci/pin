@@ -1,4 +1,4 @@
-package interfaces
+package container_manager
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 )
 
-//go:generate mockgen -source $GOFILE -destination ../mocks/mock_$GOFILE -package mocks
+//go:generate mockgen -source $GOFILE -destination ../mocks/mock_container_manager.go -package mocks
 type ContainerManager interface {
 	StartContainer(ctx context.Context, name string, image string, ports map[string]string, env []string) (container.CreateResponse, error)
 	StopContainer(ctx context.Context, containerID string) error

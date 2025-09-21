@@ -2,7 +2,10 @@ package runner
 
 import (
 	"github.com/docker/docker/api/types/container"
-	"github.com/muhammedikinci/pin/internal/interfaces"
+	"github.com/muhammedikinci/pin/internal/container_manager"
+	"github.com/muhammedikinci/pin/internal/image_manager"
+	"github.com/muhammedikinci/pin/internal/log"
+	"github.com/muhammedikinci/pin/internal/shell_commander"
 )
 
 type Job struct {
@@ -19,10 +22,10 @@ type Job struct {
 	Previous         *Job
 	ErrorChannel     chan error
 	Container        container.CreateResponse
-	InfoLog          interfaces.Log
-	ImageManager     interfaces.ImageManager
-	ContainerManager interfaces.ContainerManager
-	ShellCommander   interfaces.ShellCommander
+	InfoLog          log.Log
+	ImageManager     image_manager.ImageManager
+	ContainerManager container_manager.ContainerManager
+	ShellCommander   shell_commander.ShellCommander
 	Env              []string
 	ArtifactPath     string
 	Condition        string

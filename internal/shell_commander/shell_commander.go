@@ -3,16 +3,17 @@ package shell_commander
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 )
 
-type ShellCommander struct {
+type shellCommanderImpl struct {
 }
 
 func NewShellCommander() ShellCommander {
-	return ShellCommander{}
+	return &shellCommanderImpl{}
 }
 
-func (sc ShellCommander) PrepareShellCommands(soloExecution bool, scripts []string) []string {
+func (sc *shellCommanderImpl) PrepareShellCommands(soloExecution bool, scripts []string) []string {
 	cmds := []string{}
 
 	if len(scripts) == 0 {
@@ -36,11 +37,11 @@ func (sc ShellCommander) PrepareShellCommands(soloExecution bool, scripts []stri
 	return cmds
 }
 
-func (sc ShellCommander) wrapCommand(cmd string) string {
-	return "#!/bin/sh\nexec > /shell_command_output.log 2>&1\n" + cmd
+func (sc *shellCommanderImpl) wrapCommand(cmd string) string {
+	return fmt.Sprintf("#!/bin/sh\nexec > /shell_command_output.log 2>&1\n%s", cmd)
 }
 
-func (sc ShellCommander) ShellToTar(cmd string) (*bytes.Buffer, error) {
+func (sc *shellCommanderImpl) ShellToTar(cmd string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 
 	tw := tar.NewWriter(&buf)

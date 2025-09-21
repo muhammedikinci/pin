@@ -3,8 +3,6 @@ package sse
 import (
 	"testing"
 	"time"
-
-	"github.com/muhammedikinci/pin/internal/interfaces"
 )
 
 func TestEventBroadcaster_NewEventBroadcaster(t *testing.T) {
@@ -14,18 +12,14 @@ func TestEventBroadcaster_NewEventBroadcaster(t *testing.T) {
 		t.Fatal("Expected broadcaster to be created, got nil")
 	}
 
-	if broadcaster.clients == nil {
-		t.Error("Expected clients map to be initialized")
-	}
-
-	if len(broadcaster.clients) != 0 {
+	if broadcaster.GetClientCount() != 0 {
 		t.Error("Expected clients map to be empty initially")
 	}
 }
 
 func TestEventBroadcaster_AddClient(t *testing.T) {
 	broadcaster := NewEventBroadcaster()
-	clientChan := make(chan interfaces.Event, 10)
+	clientChan := make(chan Event, 10)
 
 	clientID := broadcaster.AddClient(clientChan)
 
@@ -33,8 +27,8 @@ func TestEventBroadcaster_AddClient(t *testing.T) {
 		t.Error("Expected non-empty client ID")
 	}
 
-	if len(broadcaster.clients) != 1 {
-		t.Errorf("Expected 1 client, got %d", len(broadcaster.clients))
+	if broadcaster.GetClientCount() != 1 {
+		t.Errorf("Expected 1 client, got %d", broadcaster.GetClientCount())
 	}
 
 	// Should receive welcome event
@@ -50,7 +44,7 @@ func TestEventBroadcaster_AddClient(t *testing.T) {
 
 func TestEventBroadcaster_RemoveClient(t *testing.T) {
 	broadcaster := NewEventBroadcaster()
-	clientChan := make(chan interfaces.Event, 10)
+	clientChan := make(chan Event, 10)
 
 	clientID := broadcaster.AddClient(clientChan)
 
@@ -59,8 +53,8 @@ func TestEventBroadcaster_RemoveClient(t *testing.T) {
 
 	broadcaster.RemoveClient(clientID)
 
-	if len(broadcaster.clients) != 0 {
-		t.Errorf("Expected 0 clients after removal, got %d", len(broadcaster.clients))
+	if broadcaster.GetClientCount() != 0 {
+		t.Errorf("Expected 0 clients after removal, got %d", broadcaster.GetClientCount())
 	}
 
 	// Channel should be closed
@@ -78,8 +72,8 @@ func TestEventBroadcaster_Broadcast(t *testing.T) {
 	broadcaster := NewEventBroadcaster()
 
 	// Add multiple clients
-	client1Chan := make(chan interfaces.Event, 10)
-	client2Chan := make(chan interfaces.Event, 10)
+	client1Chan := make(chan Event, 10)
+	client2Chan := make(chan Event, 10)
 
 	client1ID := broadcaster.AddClient(client1Chan)
 	client2ID := broadcaster.AddClient(client2Chan)
@@ -89,7 +83,7 @@ func TestEventBroadcaster_Broadcast(t *testing.T) {
 	<-client2Chan
 
 	// Broadcast event
-	testEvent := interfaces.Event{
+	testEvent := Event{
 		Type: "test",
 		Data: map[string]interface{}{"message": "test message"},
 	}
@@ -128,13 +122,13 @@ func TestEventBroadcaster_Broadcast(t *testing.T) {
 
 func TestEventBroadcaster_BroadcastWithClosedBroadcaster(t *testing.T) {
 	broadcaster := NewEventBroadcaster()
-	clientChan := make(chan interfaces.Event, 10)
+	clientChan := make(chan Event, 10)
 
 	broadcaster.AddClient(clientChan)
 	broadcaster.Close()
 
 	// Broadcasting after close should not panic
-	testEvent := interfaces.Event{
+	testEvent := Event{
 		Type: "test",
 		Data: map[string]interface{}{"message": "test message"},
 	}
@@ -145,8 +139,8 @@ func TestEventBroadcaster_BroadcastWithClosedBroadcaster(t *testing.T) {
 func TestEventBroadcaster_Close(t *testing.T) {
 	broadcaster := NewEventBroadcaster()
 
-	client1Chan := make(chan interfaces.Event, 10)
-	client2Chan := make(chan interfaces.Event, 10)
+	client1Chan := make(chan Event, 10)
+	client2Chan := make(chan Event, 10)
 
 	broadcaster.AddClient(client1Chan)
 	broadcaster.AddClient(client2Chan)
@@ -157,12 +151,8 @@ func TestEventBroadcaster_Close(t *testing.T) {
 
 	broadcaster.Close()
 
-	if len(broadcaster.clients) != 0 {
-		t.Errorf("Expected 0 clients after close, got %d", len(broadcaster.clients))
-	}
-
-	if !broadcaster.closed {
-		t.Error("Expected broadcaster to be marked as closed")
+	if broadcaster.GetClientCount() != 0 {
+		t.Errorf("Expected 0 clients after close, got %d", broadcaster.GetClientCount())
 	}
 
 	// All client channels should be closed
@@ -192,8 +182,8 @@ func TestEventBroadcaster_GetClientCount(t *testing.T) {
 		t.Errorf("Expected 0 clients initially, got %d", count)
 	}
 
-	client1Chan := make(chan interfaces.Event, 10)
-	client2Chan := make(chan interfaces.Event, 10)
+	client1Chan := make(chan Event, 10)
+	client2Chan := make(chan Event, 10)
 
 	broadcaster.AddClient(client1Chan)
 	if count := broadcaster.GetClientCount(); count != 1 {

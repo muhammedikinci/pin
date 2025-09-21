@@ -13,7 +13,6 @@ import (
 
 	"github.com/fatih/color"
 	pinerrors "github.com/muhammedikinci/pin/internal/errors"
-	"github.com/muhammedikinci/pin/internal/interfaces"
 	"github.com/muhammedikinci/pin/internal/sse"
 	"github.com/spf13/viper"
 )
@@ -192,7 +191,7 @@ func ApplyDaemon(filepath string) error {
 	}()
 
 	// Broadcast daemon start event
-	broadcaster.Broadcast(interfaces.Event{
+	broadcaster.Broadcast(sse.Event{
 		Type: "daemon_start",
 		Data: map[string]interface{}{
 			"message":         "PIN daemon started successfully",
@@ -208,7 +207,7 @@ func ApplyDaemon(filepath string) error {
 		go func() {
 			if err := Apply(filepath); err != nil {
 				log.Printf("Initial pipeline failed: %v", err)
-				broadcaster.Broadcast(interfaces.Event{
+				broadcaster.Broadcast(sse.Event{
 					Type: "pipeline_error",
 					Data: map[string]interface{}{
 						"message": "Initial pipeline execution failed",
@@ -218,7 +217,7 @@ func ApplyDaemon(filepath string) error {
 					Timestamp: time.Now(),
 				})
 			} else {
-				broadcaster.Broadcast(interfaces.Event{
+				broadcaster.Broadcast(sse.Event{
 					Type: "pipeline_complete",
 					Data: map[string]interface{}{
 						"message": "Initial pipeline execution completed successfully",
@@ -235,7 +234,7 @@ func ApplyDaemon(filepath string) error {
 	log.Printf("Received shutdown signal, gracefully shutting down...")
 
 	// Broadcast daemon stop event
-	broadcaster.Broadcast(interfaces.Event{
+	broadcaster.Broadcast(sse.Event{
 		Type: "daemon_stop",
 		Data: map[string]interface{}{
 			"message": "PIN daemon shutting down",

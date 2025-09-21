@@ -15,18 +15,18 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	dockerclient "github.com/docker/docker/client"
 	"github.com/fatih/color"
+	"github.com/muhammedikinci/pin/internal/client"
 	"github.com/muhammedikinci/pin/internal/container_manager"
 	"github.com/muhammedikinci/pin/internal/image_manager"
-	"github.com/muhammedikinci/pin/internal/interfaces"
 	"github.com/muhammedikinci/pin/internal/shell_commander"
 	"github.com/muhammedikinci/pin/internal/sse"
 )
 
 type Runner struct {
 	ctx context.Context
-	cli interfaces.Client
+	cli client.Client
 }
 
 // RunPipeline runs the given pipeline
@@ -38,20 +38,28 @@ func (r *Runner) run(pipeline Pipeline) error {
 	r.createGlobalContext(pipeline.Workflow)
 
 	// Create Docker client with custom host if specified
-	var cli interfaces.Client
+	var cli client.Client
 	var err error
 	
 	if pipeline.DockerHost != "" {
-		cli, err = client.NewClientWithOpts(
-			client.WithHost(pipeline.DockerHost),
-			client.FromEnv,
-			client.WithAPIVersionNegotiation(),
+		dockerCli, err := dockerclient.NewClientWithOpts(
+			dockerclient.WithHost(pipeline.DockerHost),
+			dockerclient.FromEnv,
+			dockerclient.WithAPIVersionNegotiation(),
 		)
+		if err != nil {
+			return err
+		}
+		cli = client.NewClient(dockerCli)
 	} else {
-		cli, err = client.NewClientWithOpts(
-			client.FromEnv,
-			client.WithAPIVersionNegotiation(),
+		dockerCli, err := dockerclient.NewClientWithOpts(
+			dockerclient.FromEnv,
+			dockerclient.WithAPIVersionNegotiation(),
 		)
+		if err != nil {
+			return err
+		}
+		cli = client.NewClient(dockerCli)
 	}
 	
 	if err != nil {
@@ -456,7 +464,7 @@ func (r *Runner) setupJobLogging(currentJob *Job, logsWithTime bool) {
 			flag,
 		)
 		
-		// The EventLogger embeds a *log.Logger, so it can be used as interfaces.Log
+		// The EventLogger embeds a *log.Logger, so it can be used as log.Log
 		currentJob.InfoLog = eventLogger
 	} else {
 		// Use standard logger

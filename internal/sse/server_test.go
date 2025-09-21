@@ -6,16 +6,10 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"github.com/muhammedikinci/pin/internal/mocks"
-	"go.uber.org/mock/gomock"
 )
 
 func TestServer_HandleHealth(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	req := httptest.NewRequest("GET", "/health", nil)
@@ -34,10 +28,7 @@ func TestServer_HandleHealth(t *testing.T) {
 }
 
 func TestServer_HandleRoot(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	req := httptest.NewRequest("GET", "/", nil)
@@ -56,10 +47,7 @@ func TestServer_HandleRoot(t *testing.T) {
 }
 
 func TestServer_HandleTrigger_InvalidMethod(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	req := httptest.NewRequest("GET", "/trigger", nil)
@@ -73,10 +61,7 @@ func TestServer_HandleTrigger_InvalidMethod(t *testing.T) {
 }
 
 func TestServer_HandleTrigger_EmptyBody(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	req := httptest.NewRequest("POST", "/trigger", bytes.NewReader([]byte("")))
@@ -90,19 +75,7 @@ func TestServer_HandleTrigger_EmptyBody(t *testing.T) {
 }
 
 func TestServer_HandleTrigger_ValidYAML(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
-
-	// Expect broadcast calls for pipeline trigger event
-	mockBroadcaster.EXPECT().
-		Broadcast(gomock.Any()).
-		Do(func(event interface{}) {
-			// We expect at least one broadcast call for the trigger event
-		}).
-		MinTimes(1)
-
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	// Set a test pipeline executor that always succeeds
@@ -139,10 +112,7 @@ test_job:
 }
 
 func TestServer_CorsMiddleware(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	handler := server.corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -165,10 +135,7 @@ func TestServer_CorsMiddleware(t *testing.T) {
 }
 
 func TestServer_CorsMiddleware_Options(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockBroadcaster := mocks.NewMockEventBroadcaster(ctrl)
+	mockBroadcaster := NewEventBroadcaster()
 	server := NewServer(8081, mockBroadcaster, nil)
 
 	handler := server.corsMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	imagetypes "github.com/docker/docker/api/types/image"
-	"github.com/golang/mock/gomock"
+	"go.uber.org/mock/gomock"
 	"github.com/muhammedikinci/pin/internal/mocks"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,6 +24,8 @@ func TestWhenImageListReturnAnyErrorCheckTheImageAvailableMustReturnFalseAndCliE
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
 
+	im := NewImageManager(mockCli, mockLog)
+
 	merr := errors.New("test")
 	mimages := []imagetypes.Summary{}
 
@@ -32,10 +34,6 @@ func TestWhenImageListReturnAnyErrorCheckTheImageAvailableMustReturnFalseAndCliE
 		ImageList(gomock.Any(), gomock.Any()).
 		Return(mimages, merr)
 
-	im := imageManager{
-		cli: mockCli,
-		log: mockLog,
-	}
 
 	check, err := im.CheckTheImageAvailable(context.Background(), "test")
 
@@ -51,6 +49,8 @@ func TestWhenCheckTheImageAvailableCallsWithDoesntExistImageMustReturnFalseAndNi
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
 
+	im := NewImageManager(mockCli, mockLog)
+
 	mimages := []imagetypes.Summary{
 		{
 			RepoTags: []string{"asd"},
@@ -62,10 +62,6 @@ func TestWhenCheckTheImageAvailableCallsWithDoesntExistImageMustReturnFalseAndNi
 		ImageList(gomock.Any(), gomock.Any()).
 		Return(mimages, nil)
 
-	im := imageManager{
-		cli: mockCli,
-		log: mockLog,
-	}
 
 	check, err := im.CheckTheImageAvailable(context.Background(), "test")
 
@@ -80,6 +76,8 @@ func TestWhenCheckTheImageAvailableCallsWithExistImageMustReturnTrueAndNilError(
 
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
+
+	im := NewImageManager(mockCli, mockLog)
 
 	mimages := []imagetypes.Summary{
 		{
@@ -96,10 +94,6 @@ func TestWhenCheckTheImageAvailableCallsWithExistImageMustReturnTrueAndNilError(
 		Println("Image is available").
 		Times(1)
 
-	im := imageManager{
-		cli: mockCli,
-		log: mockLog,
-	}
 
 	check, err := im.CheckTheImageAvailable(context.Background(), "image1")
 
@@ -114,6 +108,8 @@ func TestWhenClientImagePullFunctionReturnAnErrorPullImageMustReturnTheSameError
 
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
+
+	im := NewImageManager(mockCli, mockLog)
 
 	mimage := "test"
 	merr := errors.New("test")
@@ -131,10 +127,6 @@ func TestWhenClientImagePullFunctionReturnAnErrorPullImageMustReturnTheSameError
 		Printf("Image pulling: %s", mimage).
 		Times(1)
 
-	im := imageManager{
-		cli: mockCli,
-		log: mockLog,
-	}
 
 	err := im.PullImage(context.Background(), mimage)
 
@@ -148,6 +140,8 @@ func TestWhenClientImagePullFunctionReturnUnexpectedStreamPullImageMustReturnThe
 
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
+
+	im := NewImageManager(mockCli, mockLog)
 
 	mimage := "test"
 	var buf bytes.Buffer
@@ -169,10 +163,6 @@ func TestWhenClientImagePullFunctionReturnUnexpectedStreamPullImageMustReturnThe
 		Printf("Image pulling: %s", mimage).
 		Times(1)
 
-	im := imageManager{
-		cli: mockCli,
-		log: mockLog,
-	}
 
 	err := im.PullImage(context.Background(), mimage)
 
@@ -188,6 +178,8 @@ func TestWhenClientImagePullFunctionReturnSuccessfulStreamPullImageMustReturnNil
 
 	mockCli := mocks.NewMockClient(ctrl)
 	mockLog := mocks.NewMockLog(ctrl)
+
+	im := NewImageManager(mockCli, mockLog)
 
 	mimage := "test"
 	var buf bytes.Buffer
@@ -208,10 +200,6 @@ func TestWhenClientImagePullFunctionReturnSuccessfulStreamPullImageMustReturnNil
 		Printf("Image pulling: %s", mimage).
 		Times(1)
 
-	im := imageManager{
-		cli: mockCli,
-		log: mockLog,
-	}
 
 	err := im.PullImage(context.Background(), mimage)
 
