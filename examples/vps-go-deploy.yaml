@@ -1,0 +1,19 @@
+workflow:
+  - test
+  - deploy
+
+logsWithTime: true
+
+test:
+  image: golang:1.24-alpine
+  copyFiles: true
+  script:
+    - go test ./...
+
+deploy:
+  host: true
+  condition: $BRANCH == "main"
+  script:
+    - docker build -t myapp:latest .
+    - docker rm -f myapp || true
+    - docker run -d --restart unless-stopped --name myapp -p 8080:8080 myapp:latest

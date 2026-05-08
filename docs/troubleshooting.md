@@ -8,7 +8,7 @@ This guide helps you diagnose and resolve common issues when using Pin.
 
 #### Error: "either 'image' or 'dockerfile' must be specified"
 
-**Problem**: Job configuration is missing both `image` and `dockerfile` fields.
+**Problem**: Job configuration is missing `image`, `dockerfile`, or `host: true`.
 
 ```yaml
 # ❌ Incorrect
@@ -17,7 +17,7 @@ job:
     - echo "hello"
 ```
 
-**Solution**: Specify either an image or dockerfile:
+**Solution**: Specify an image, dockerfile, or host job:
 
 ```yaml
 # ✅ Correct - Using image
@@ -31,6 +31,12 @@ job:
   dockerfile: "./Dockerfile"
   script:
     - echo "hello"
+
+# ✅ Correct - Running on the VPS host
+deploy:
+  host: true
+  script:
+    - docker compose up -d --build
 ```
 
 #### Error: "port configuration validation failed"
@@ -106,7 +112,7 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # Or run with sudo (not recommended for regular use)
-sudo pin apply -f pipeline.yaml
+sudo pin run -f pipeline.yaml
 ```
 
 ### Container Runtime Issues
@@ -478,7 +484,7 @@ pin --version
 
 3. **Error output**:
 ```bash
-pin apply -f pipeline.yaml 2>&1 | tee debug.log
+pin run -f pipeline.yaml 2>&1 | tee debug.log
 ```
 
 4. **System information**:
@@ -505,12 +511,16 @@ Look for these patterns in logs:
 
 ### Enable Debug Mode
 
-```bash
-# Run with maximum verbosity
-pin apply -f pipeline.yaml --verbose
+Include timestamps in the pipeline config:
 
-# Or set environment variable
-DEBUG=* pin apply -f pipeline.yaml
+```yaml
+logsWithTime: true
+```
+
+Or capture the run output:
+
+```bash
+pin run -f pipeline.yaml 2>&1 | tee debug.log
 ```
 
 This troubleshooting guide covers the most common issues users encounter with Pin. For additional help, check the [GitHub Issues](https://github.com/muhammedikinci/pin/issues) page or create a new issue with detailed information about your problem.

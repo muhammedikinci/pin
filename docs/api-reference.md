@@ -7,17 +7,16 @@ This document provides comprehensive documentation for Pin's HTTP API when runni
 Start Pin in daemon mode to enable the HTTP API:
 
 ```bash
-# Start daemon without initial pipeline
-pin apply --daemon
+# Start daemon on localhost
+pin daemon
 
-# Start daemon with specific pipeline
-pin apply --daemon -f pipeline.yaml
-
-# Start daemon on custom port
-pin apply --daemon --port 8082
+# Start daemon for remote access
+PIN_TOKEN=change-me pin daemon --host 0.0.0.0 --port 8081
 ```
 
 **Base URL**: `http://localhost:8081` (default)
+
+When a token is configured, pass it with `Authorization: Bearer <token>`, `X-Pin-Token`, or `?token=<token>`.
 
 ## 📋 API Endpoints
 
@@ -37,7 +36,11 @@ Get API information and available endpoints.
     "/": "API information",
     "/health": "Health check and status",
     "/events": "Server-Sent Events stream",
-    "/trigger": "Trigger pipeline execution"
+    "/trigger": "Trigger pipeline execution",
+    "/runs": "Recent pipeline run statuses",
+    "/runs/{id}": "Run detail",
+    "/runs/{id}/logs": "Run logs",
+    "/webhooks/github": "GitHub push webhook"
   },
   "uptime": "2h 15m 30s",
   "connected_clients": 3
@@ -82,6 +85,7 @@ Connect to real-time event stream for pipeline monitoring.
 **Event Types**:
 - `daemon_start`: Service started
 - `pipeline_trigger`: Pipeline execution requested
+- `pipeline_started`: Queued pipeline began running
 - `job_container_start`: Container started for job
 - `log`: Real-time log messages
 - `job_completed`: Job finished successfully
@@ -113,7 +117,52 @@ data: {"level":"success","message":"Job completed successfully","job":"build","d
 data: {"level":"info","message":"Pipeline execution completed","total_duration":"1m 30s","timestamp":"2024-01-15T10:31:30Z"}
 ```
 
-### 4. Trigger Pipeline
+### 4. Recent Runs
+
+List recent daemon runs.
+
+**Endpoint**: `GET /runs`
+
+**Example**:
+```bash
+curl -H "Authorization: Bearer change-me" http://localhost:8081/runs
+```
+
+**Response**:
+```json
+{
+  "runs": [
+    {
+      "id": "a run id",
+      "status": "success",
+      "source": "http_endpoint",
+      "started_at": "2026-05-08T20:43:43+03:00",
+      "completed_at": "2026-05-08T20:44:02+03:00"
+    }
+  ],
+  "timestamp": "2026-05-08T20:44:03+03:00"
+}
+```
+
+### Run Detail
+
+**Endpoint**: `GET /runs/{id}`
+
+Fetch one persisted run record.
+
+### Run Logs
+
+**Endpoint**: `GET /runs/{id}/logs`
+
+Fetch persisted log output for one run.
+
+**Example**:
+```bash
+curl -H "Authorization: Bearer change-me" \
+  http://localhost:8081/runs/<run_id>/logs
+```
+
+### 5. Trigger Pipeline
 
 Execute a pipeline by sending YAML configuration.
 
@@ -126,10 +175,10 @@ Execute a pipeline by sending YAML configuration.
 **Response**:
 ```json
 {
-  "status": "triggered",
-  "message": "Pipeline execution started",
-  "pipeline_id": "pipeline-abc123",
-  "timestamp": "2024-01-15T10:30:00Z"
+  "status": "accepted",
+  "message": "Pipeline execution queued",
+  "run_id": "pipeline-run-id",
+  "timestamp": "2026-05-08T20:43:30+03:00"
 }
 ```
 
@@ -137,6 +186,7 @@ Execute a pipeline by sending YAML configuration.
 ```bash
 # Trigger with file
 curl -X POST \
+  -H "Authorization: Bearer change-me" \
   -H "Content-Type: application/yaml" \
   --data-binary @pipeline.yaml \
   http://localhost:8081/trigger
@@ -152,6 +202,22 @@ hello:
     - echo "Hello from API!"' \
   http://localhost:8081/trigger
 ```
+
+### 6. GitHub Webhook
+
+Trigger a configured pipeline from GitHub push events.
+
+Start the daemon with webhook configuration:
+
+```bash
+PIN_GITHUB_SECRET=github-secret pin daemon \
+  --github-pipeline /opt/myapp/pin.yaml \
+  --github-branch main
+```
+
+**Endpoint**: `POST /webhooks/github`
+
+Pin verifies the `X-Hub-Signature-256` header using `PIN_GITHUB_SECRET`, checks the branch filter, then queues the configured pipeline file.
 
 ## 📡 Real-time Monitoring Examples
 
@@ -523,7 +589,7 @@ server {
 
 ```bash
 # Bind to localhost only
-pin apply --daemon --host 127.0.0.1
+pin daemon --host 127.0.0.1
 
 # Use firewall to restrict access
 sudo ufw allow from 192.168.1.0/24 to any port 8081
@@ -535,6 +601,7 @@ sudo ufw allow from 192.168.1.0/24 to any port 8081
 
 - `200 OK`: Request successful
 - `400 Bad Request`: Invalid YAML or request format
+- `401 Unauthorized`: Missing or invalid token/webhook signature
 - `500 Internal Server Error`: Pipeline execution error
 - `503 Service Unavailable`: Daemon not ready
 
@@ -566,7 +633,8 @@ Requires=docker.service
 Type=simple
 User=pin
 WorkingDirectory=/opt/pin
-ExecStart=/usr/local/bin/pin apply --daemon --host 127.0.0.1
+Environment=PIN_TOKEN=change-me
+ExecStart=/usr/local/bin/pin daemon --host 127.0.0.1 --port 8081
 Restart=always
 RestartSec=10
 
@@ -587,7 +655,7 @@ RUN apk --no-cache add docker-cli
 WORKDIR /app
 COPY --from=builder /app/pin .
 EXPOSE 8081
-CMD ["./pin", "apply", "--daemon", "--host", "0.0.0.0"]
+CMD ["./pin", "daemon", "--host", "0.0.0.0"]
 ```
 
 This API reference provides comprehensive documentation for integrating with Pin's daemon mode, enabling programmatic pipeline execution and real-time monitoring.

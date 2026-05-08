@@ -1,0 +1,26 @@
+workflow:
+  - install
+  - test
+  - deploy
+
+logsWithTime: true
+
+install:
+  image: node:22-alpine
+  copyFiles: true
+  script:
+    - npm ci
+
+test:
+  image: node:22-alpine
+  copyFiles: true
+  script:
+    - npm test
+
+deploy:
+  host: true
+  condition: $BRANCH == "main"
+  script:
+    - docker compose pull
+    - docker compose up -d --build
+    - docker compose ps

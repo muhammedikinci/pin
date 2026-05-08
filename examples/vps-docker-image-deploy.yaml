@@ -1,0 +1,23 @@
+workflow:
+  - build
+  - smoke-test
+  - deploy
+
+logsWithTime: true
+
+build:
+  host: true
+  script:
+    - docker build -t registry.example.com/myapp:${COMMIT_SHA:-latest} .
+
+smoke-test:
+  host: true
+  script:
+    - docker run --rm registry.example.com/myapp:${COMMIT_SHA:-latest} ./healthcheck.sh
+
+deploy:
+  host: true
+  condition: $BRANCH == "main"
+  script:
+    - docker push registry.example.com/myapp:${COMMIT_SHA:-latest}
+    - docker service update --image registry.example.com/myapp:${COMMIT_SHA:-latest} myapp

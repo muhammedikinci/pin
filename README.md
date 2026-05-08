@@ -6,42 +6,72 @@
 
 # pin 🔥 [![pipeline](https://github.com/muhammedikinci/pin/actions/workflows/go.yml/badge.svg)](https://github.com/muhammedikinci/pin/actions/workflows/go.yml)
 
-Local pipeline project with Docker Golang API. Run pipelines locally or as a daemon with real-time monitoring.
+Pin is a tiny pipeline runner for developers who want to run build, test, and deploy jobs on their own VPS without setting up a full CI system.
 
 ![pingif](asset/pin.gif)
 
 <sup><sup>terminal from [terminalgif.com](https://terminalgif.com)</sup></sup>
 
-## 🚀 Daemon Mode & Real-time Monitoring
+## Why Pin?
 
-Pin can run as a long-running daemon service with SSE (Server-Sent Events) support for real-time pipeline monitoring and HTTP-triggered execution.
+Use Pin when you have Docker on a machine and want a simple way to:
 
-### Key Features
+- run the same pipeline locally or on a VPS
+- trigger deploys over HTTP
+- watch live pipeline events with Server-Sent Events
+- avoid maintaining a full CI server for small projects
 
-- **Long-running service**: Keep pin running as a daemon
-- **HTTP API**: Trigger pipelines via REST endpoints
-- **Real-time events**: Monitor pipeline execution via Server-Sent Events
-- **Remote monitoring**: Connect from multiple clients simultaneously
-- **Production ready**: Graceful shutdown and error handling
+Pin is not trying to replace GitHub Actions, Jenkins, or Kubernetes. It is for the smaller, very common case: "I have a server, I have Docker, I want to build/test/deploy safely from one small binary."
 
-### Architecture Overview
+## Quick Start
 
-![pingif](asset/pindaemon.svg)
-
-### Quick Start
+Create a starter pipeline:
 
 ```bash
-# Start daemon mode
-pin apply --daemon
-
-# Trigger pipeline from another terminal
-curl -X POST -H "Content-Type: application/yaml" \
-  --data-binary @pipeline.yaml \
-  http://localhost:8081/trigger
-
-# Monitor real-time events
-curl -N http://localhost:8081/events
+pin init
+pin validate -f pin.yaml
+pin run -f pin.yaml
 ```
+
+Run Pin as a daemon on your VPS:
+
+```bash
+PIN_TOKEN=change-me pin daemon --host 0.0.0.0 --port 8081
+
+# From your laptop or another machine
+pin trigger -f pin.yaml --url http://your-vps:8081 --token change-me
+pin watch --url http://your-vps:8081 --token change-me
+pin runs --url http://your-vps:8081 --token change-me
+pin logs <run_id> --url http://your-vps:8081 --token change-me
+```
+
+Check your local setup:
+
+```bash
+pin doctor -f pin.yaml --url http://your-vps:8081 --token change-me
+```
+
+## Core Commands
+
+| Command | Description |
+| --- | --- |
+| `pin init` | Create a starter `pin.yaml` |
+| `pin validate -f pin.yaml` | Validate config without running Docker jobs |
+| `pin run -f pin.yaml` | Run a pipeline locally |
+| `pin daemon --host 127.0.0.1 --port 8081` | Start the HTTP/SSE daemon |
+| `pin trigger -f pin.yaml --url http://server:8081` | Send a pipeline to a daemon |
+| `pin watch --url http://server:8081` | Watch live daemon events |
+| `pin runs --url http://server:8081` | List recent daemon runs |
+| `pin logs <run_id> --url http://server:8081` | Fetch persisted logs for one run |
+| `pin doctor` | Check Docker, config, port, and daemon access |
+
+The older `pin apply -f pin.yaml` command still works as a backward-compatible alias for local execution.
+
+## Daemon Mode
+
+Pin can run as a long-running daemon with an HTTP API and Server-Sent Events stream. This is the main VPS workflow: keep one `pin daemon` process running, trigger pipelines remotely, and watch them live.
+
+Runs and logs are persisted under `.pin/runs` by default. Use `--data-dir /var/lib/pin` for production daemons.
 
 ### HTTP Endpoints
 
@@ -50,7 +80,51 @@ curl -N http://localhost:8081/events
 | `/events`  | GET    | Server-Sent Events stream for real-time updates |
 | `/health`  | GET    | Health check and connected client count         |
 | `/trigger` | POST   | Trigger pipeline execution with YAML config     |
+| `/runs`    | GET    | Recent pipeline run statuses                    |
+| `/runs/{id}` | GET | Details for one run |
+| `/runs/{id}/logs` | GET | Persisted log output for one run |
+| `/webhooks/github` | POST | GitHub push webhook endpoint |
 | `/`        | GET    | API information and available endpoints         |
+
+### Daemon Security
+
+The daemon binds to `127.0.0.1` by default. If you expose it with `--host 0.0.0.0`, set a token:
+
+```bash
+PIN_TOKEN=change-me pin daemon --host 0.0.0.0 --port 8081
+```
+
+Clients can pass the token with `--token`, the `PIN_TOKEN` environment variable, `Authorization: Bearer <token>`, `X-Pin-Token`, or a `?token=` query parameter for EventSource-style clients.
+
+### GitHub Webhooks
+
+Pin can trigger a configured pipeline from GitHub push events:
+
+```bash
+PIN_TOKEN=change-me PIN_GITHUB_SECRET=github-secret \
+  pin daemon \
+  --host 127.0.0.1 \
+  --port 8081 \
+  --data-dir /var/lib/pin \
+  --github-pipeline /opt/myapp/pin.yaml \
+  --github-branch main
+```
+
+Set the GitHub webhook payload URL to `https://your-domain/webhooks/github`, content type to `application/json`, and secret to the same value as `PIN_GITHUB_SECRET`.
+
+### Host Jobs
+
+Most jobs run in Docker containers with `image` or `dockerfile`. Deploy steps that need direct VPS access can use `host: true`:
+
+```yaml
+deploy:
+  host: true
+  condition: $BRANCH == "main"
+  script:
+    - docker compose up -d --build
+```
+
+Host jobs run as the daemon user, so keep that user scoped to the permissions your deploy needs.
 
 ### Real-time Events
 
@@ -58,6 +132,7 @@ The daemon broadcasts various events during pipeline execution:
 
 - **daemon_start**: Service started successfully
 - **pipeline_trigger**: New pipeline execution requested
+- **pipeline_started**: Queued pipeline began running
 - **job_container_start**: Container started for job
 - **log**: Real-time log messages from jobs
 - **job_completed**: Job finished successfully
@@ -69,7 +144,7 @@ The daemon broadcasts various events during pipeline execution:
 
 ```javascript
 // Connect to event stream
-const eventSource = new EventSource("http://localhost:8081/events");
+const eventSource = new EventSource("http://localhost:8081/events?token=change-me");
 
 eventSource.onmessage = function (event) {
   const data = JSON.parse(event.data);
@@ -82,29 +157,17 @@ eventSource.onmessage = function (event) {
 // {"level":"success","message":"Job completed successfully","job":"build"}
 ```
 
-### Production Usage
-
-```bash
-# Run daemon with specific pipeline
-pin apply --daemon -f production.yaml
-
-# Run daemon without initial pipeline (HTTP-only mode)
-pin apply --daemon
-
-# Monitor from remote machine
-curl -N http://your-server:8081/events
-
-# Trigger deployments via API
-curl -X POST -H "Content-Type: application/yaml" \
-  --data-binary @deployment.yaml \
-  http://your-server:8081/trigger
-```
-
 # 🌐 Installation
 
 ## Download latest release
 
 You can download latest release from [here](https://github.com/muhammedikinci/pin/releases)
+
+Or install the latest release with:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/muhammedikinci/pin/main/scripts/install.sh | sh
+```
 
 ## Install with cloning
 
@@ -129,7 +192,7 @@ go build -o pin ./cmd/cli/.
 Or you can run directly
 
 ```sh
-go run ./cmd/cli/. apply -n "test" -f ./testdata/test.yaml
+go run ./cmd/cli/. run -f ./testdata/test.yaml
 ```
 
 # ⚙️ Configuration
@@ -140,7 +203,7 @@ Pin includes built-in YAML validation to catch configuration errors before pipel
 
 Pin automatically validates your pipeline configuration before execution:
 
-- ✅ **Required fields**: Ensures either `image` or `dockerfile` is specified
+- ✅ **Required fields**: Ensures either `image`, `dockerfile`, or `host: true` is specified
 - ✅ **Field types**: Validates all fields have correct data types
 - ✅ **Port formats**: Checks port configurations match supported formats
 - ✅ **Script validation**: Ensures scripts are not empty
@@ -150,12 +213,11 @@ Pin automatically validates your pipeline configuration before execution:
 
 ```bash
 # Valid configuration passes validation
-$ pin apply -f pipeline.yaml
-Pipeline validation successful
-⚉ build Starting...
+$ pin validate -f pipeline.yaml
+Pipeline configuration is valid: pipeline.yaml
 
 # Invalid configuration shows helpful errors
-$ pin apply -f invalid.yaml
+$ pin validate -f invalid.yaml
 Pipeline validation failed: validation error in job 'build': either 'image' or 'dockerfile' must be specified
 ```
 
@@ -585,7 +647,7 @@ deploy:
 You can set environment variables before running pin:
 
 ```bash
-BRANCH=main pin apply -f pipeline.yaml
+BRANCH=main pin run -f pipeline.yaml
 ```
 
 ## Custom Dockerfile

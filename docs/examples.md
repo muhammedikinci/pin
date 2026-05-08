@@ -28,7 +28,7 @@ test:
 ```
 
 ```bash
-pin apply -f build.yaml
+pin run -f build.yaml
 ```
 
 ### 2. Node.js Application Development
@@ -267,10 +267,10 @@ deploy-production:
 Usage:
 ```bash
 # Staging deployment
-BRANCH=develop pin apply -f deployment.yaml
+BRANCH=develop pin run -f deployment.yaml
 
 # Production deployment
-BRANCH=main pin apply -f deployment.yaml
+BRANCH=main pin run -f deployment.yaml
 ```
 
 ### 9. Multi-Environment Deployment
@@ -446,10 +446,10 @@ integration-test:
 ### Environment Variables
 ```bash
 # Development
-NODE_ENV=development pin apply -f app.yaml
+NODE_ENV=development pin run -f app.yaml
 
 # Production
-NODE_ENV=production BRANCH=main pin apply -f app.yaml
+NODE_ENV=production BRANCH=main pin run -f app.yaml
 ```
 
 ### File Ignore Patterns
@@ -486,18 +486,15 @@ port:
 
 Start daemon mode:
 ```bash
-pin apply --daemon
+PIN_TOKEN=change-me pin daemon --data-dir .pin
 ```
 
-Trigger pipelines via HTTP:
+Trigger and inspect pipelines:
 ```bash
-# Trigger a simple build pipeline
-curl -X POST -H "Content-Type: application/yaml" \
-  --data-binary @build.yaml \
-  http://localhost:8081/trigger
-
-# Monitor real-time events
-curl -N http://localhost:8081/events
+pin trigger -f build.yaml --token change-me
+pin watch --token change-me
+pin runs --token change-me
+pin logs <run_id> --token change-me
 ```
 
 ### 15. Production Monitoring Setup

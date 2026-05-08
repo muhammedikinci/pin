@@ -1,0 +1,18 @@
+[Unit]
+Description=Pin Pipeline Daemon
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=pin
+Group=docker
+WorkingDirectory=/opt/myapp
+Environment=PIN_TOKEN=change-me
+Environment=PIN_GITHUB_SECRET=change-me-too
+ExecStart=/usr/local/bin/pin daemon --host 127.0.0.1 --port 8081 --data-dir /var/lib/pin --github-pipeline /opt/myapp/pin.yaml --github-branch main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
