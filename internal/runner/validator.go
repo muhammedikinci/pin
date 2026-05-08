@@ -101,6 +101,23 @@ func (v *PipelineValidator) validateJob(jobName string) error {
 func (v *PipelineValidator) validateImageOrDockerfile(configMap map[string]interface{}) error {
 	image := configMap["image"]
 	dockerfile := configMap["dockerfile"]
+	host := configMap["host"]
+
+	hostExecution := false
+	if host != nil {
+		hostValue, ok := host.(bool)
+		if !ok {
+			return errors.New("'host' must be a boolean value")
+		}
+		hostExecution = hostValue
+	}
+
+	if hostExecution {
+		if image != nil || dockerfile != nil {
+			return errors.New("host jobs cannot specify 'image' or 'dockerfile'")
+		}
+		return nil
+	}
 
 	if image == nil && dockerfile == nil {
 		validationBuilder := pinerrors.NewValidationErrorBuilder()
@@ -142,12 +159,12 @@ func (v *PipelineValidator) validateScript(configMap map[string]interface{}) err
 	}
 
 	refVal := reflect.ValueOf(script)
-	
+
 	if refVal.Kind() == reflect.Slice {
 		if refVal.Len() == 0 {
 			return errors.New("'script' array cannot be empty")
 		}
-		
+
 		for i := 0; i < refVal.Len(); i++ {
 			item := refVal.Index(i).Interface()
 			if _, ok := item.(string); !ok {
@@ -176,7 +193,7 @@ func (v *PipelineValidator) validatePorts(configMap map[string]interface{}) erro
 	}
 
 	refVal := reflect.ValueOf(port)
-	
+
 	if refVal.Kind() == reflect.Slice {
 		for i := 0; i < refVal.Len(); i++ {
 			item := refVal.Index(i).Interface()
@@ -202,7 +219,7 @@ func (v *PipelineValidator) validatePorts(configMap map[string]interface{}) erro
 // Supports formats: "8080:80" or "127.0.0.1:8080:80" or "localhost:8080:80"
 func (v *PipelineValidator) validatePortFormat(portStr string) error {
 	parts := strings.Split(portStr, ":")
-	
+
 	switch len(parts) {
 	case 2:
 		// Format: "hostPort:containerPort" (e.g., "8080:80")
@@ -234,7 +251,7 @@ func (v *PipelineValidator) validateEnvironmentVariables(configMap map[string]in
 	}
 
 	refVal := reflect.ValueOf(env)
-	
+
 	if refVal.Kind() == reflect.Slice {
 		for i := 0; i < refVal.Len(); i++ {
 			item := refVal.Index(i).Interface()
@@ -264,7 +281,7 @@ func (v *PipelineValidator) validateCopyIgnore(configMap map[string]interface{})
 	}
 
 	refVal := reflect.ValueOf(copyIgnore)
-	
+
 	if refVal.Kind() == reflect.Slice {
 		for i := 0; i < refVal.Len(); i++ {
 			item := refVal.Index(i).Interface()
@@ -345,8 +362,8 @@ func (v *PipelineValidator) validateCondition(configMap map[string]interface{}) 
 
 // validateBooleanFields validates boolean fields
 func (v *PipelineValidator) validateBooleanFields(configMap map[string]interface{}) error {
-	boolFields := []string{"copyfiles", "soloexecution", "parallel"}
-	
+	boolFields := []string{"copyfiles", "soloexecution", "parallel", "host"}
+
 	for _, field := range boolFields {
 		value := configMap[field]
 		if value != nil {
@@ -399,7 +416,7 @@ func (v *PipelineValidator) validateDockerHost() error {
 		if hostPart == "" {
 			return errors.New("docker.host tcp:// format requires host and port (e.g., tcp://localhost:2375)")
 		}
-		
+
 		// Check if it contains port
 		if !strings.Contains(hostPart, ":") {
 			return errors.New("docker.host tcp:// format must include port (e.g., tcp://localhost:2375)")

@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -40,7 +41,7 @@ func (r *Runner) run(pipeline Pipeline) error {
 	// Create Docker client with custom host if specified
 	var cli client.Client
 	var err error
-	
+
 	if pipeline.DockerHost != "" {
 		dockerCli, err := dockerclient.NewClientWithOpts(
 			dockerclient.WithHost(pipeline.DockerHost),
@@ -61,7 +62,7 @@ func (r *Runner) run(pipeline Pipeline) error {
 		}
 		cli = client.NewClient(dockerCli)
 	}
-	
+
 	if err != nil {
 		return err
 	}
@@ -69,6 +70,8 @@ func (r *Runner) run(pipeline Pipeline) error {
 	r.cli = cli
 
 	for _, job := range pipeline.Workflow {
+		job.RunID = pipeline.RunID
+		job.LogWriter = pipeline.LogWriter
 		go func(job *Job) {
 			r.jobRunnerWithRetry(job, pipeline.LogsWithTime)
 		}(job)
@@ -83,30 +86,30 @@ func (r *Runner) run(pipeline Pipeline) error {
 func (r *Runner) jobRunnerWithRetry(currentJob *Job, logsWithTime bool) {
 	// Set up logging first - use event-aware logger if broadcaster is available
 	r.setupJobLogging(currentJob, logsWithTime)
-	
+
 	var lastError error
-	
+
 	for attempt := 1; attempt <= currentJob.RetryConfig.MaxAttempts; attempt++ {
 		// Create a copy of the job for this attempt to reset state
 		attemptJob := *currentJob
 		attemptJob.ErrorChannel = make(chan error, 1)
-		
+
 		// Run the job attempt
 		go r.jobRunner(&attemptJob, logsWithTime)
 		lastError = <-attemptJob.ErrorChannel
-		
+
 		if lastError == nil {
 			// Success - send success to original error channel
 			currentJob.ErrorChannel <- nil
 			return
 		}
-		
+
 		// If this was the last attempt, send the error
 		if attempt == currentJob.RetryConfig.MaxAttempts {
 			color.Set(color.FgRed)
 			currentJob.InfoLog.Printf("Job failed after %d attempts", currentJob.RetryConfig.MaxAttempts)
 			color.Unset()
-			
+
 			// Broadcast job failure event
 			if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
 				eventLogger.BroadcastJobEvent("job_failed", map[string]interface{}{
@@ -115,19 +118,19 @@ func (r *Runner) jobRunnerWithRetry(currentJob *Job, logsWithTime bool) {
 					"max_attempts": currentJob.RetryConfig.MaxAttempts,
 				})
 			}
-			
+
 			currentJob.ErrorChannel <- lastError
 			return
 		}
-		
+
 		// Calculate delay with exponential backoff
-		delay := time.Duration(float64(currentJob.RetryConfig.DelaySeconds) * math.Pow(currentJob.RetryConfig.BackoffMultiplier, float64(attempt-1))) * time.Second
-		
+		delay := time.Duration(float64(currentJob.RetryConfig.DelaySeconds)*math.Pow(currentJob.RetryConfig.BackoffMultiplier, float64(attempt-1))) * time.Second
+
 		color.Set(color.FgYellow)
-		currentJob.InfoLog.Printf("Job failed (attempt %d/%d), retrying in %v: %s", 
+		currentJob.InfoLog.Printf("Job failed (attempt %d/%d), retrying in %v: %s",
 			attempt, currentJob.RetryConfig.MaxAttempts, delay, lastError.Error())
 		color.Unset()
-		
+
 		// Wait before retrying
 		time.Sleep(delay)
 	}
@@ -155,6 +158,21 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 		color.Set(color.FgYellow)
 		currentJob.InfoLog.Printf("Job skipped due to condition: %s", currentJob.Condition)
 		color.Unset()
+		currentJob.ErrorChannel <- nil
+		return
+	}
+
+	if currentJob.HostExecution {
+		if err := r.hostScriptExecutor(*currentJob); err != nil {
+			currentJob.ErrorChannel <- err
+			return
+		}
+		currentJob.InfoLog.Println("Job ended")
+		if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
+			eventLogger.BroadcastJobEvent("job_completed", map[string]interface{}{
+				"status": "success",
+			})
+		}
 		currentJob.ErrorChannel <- nil
 		return
 	}
@@ -225,7 +243,7 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	color.Set(color.FgGreen)
 	currentJob.InfoLog.Println("Starting the container")
 	color.Unset()
-	
+
 	// Broadcast job start event
 	if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
 		eventLogger.BroadcastJobEvent("job_container_start", map[string]interface{}{
@@ -264,7 +282,7 @@ func (r *Runner) jobRunner(currentJob *Job, logsWithTime bool) {
 	color.Set(color.FgGreen)
 	currentJob.InfoLog.Println("Job ended")
 	color.Unset()
-	
+
 	// Broadcast job completion event
 	if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
 		eventLogger.BroadcastJobEvent("job_completed", map[string]interface{}{
@@ -314,6 +332,46 @@ func (r Runner) commandScriptExecutor(currentJob Job) error {
 	return nil
 }
 
+func (r Runner) hostScriptExecutor(currentJob Job) error {
+	if eventLogger, ok := currentJob.InfoLog.(*sse.EventLogger); ok {
+		eventLogger.BroadcastJobEvent("job_host_start", map[string]interface{}{
+			"message": "Host job started",
+		})
+	}
+
+	cmds := currentJob.Script
+	if !currentJob.SoloExecution {
+		cmds = []string{strings.Join(currentJob.Script, "\n")}
+	}
+
+	writer := io.Writer(os.Stdout)
+	if currentJob.LogWriter != nil {
+		writer = io.MultiWriter(os.Stdout, currentJob.LogWriter)
+	}
+
+	for _, script := range cmds {
+		if strings.TrimSpace(script) == "" {
+			continue
+		}
+		currentJob.InfoLog.Printf("Execute host command: %s", script)
+
+		command := exec.CommandContext(r.ctx, "/bin/sh", "-c", script)
+		command.Stdout = writer
+		command.Stderr = writer
+		if currentJob.WorkDir != "" && currentJob.WorkDir != "/root" {
+			command.Dir = currentJob.WorkDir
+		} else {
+			command.Dir = "."
+		}
+
+		if err := command.Run(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r Runner) commandRunner(command string, name string, currentJob Job) error {
 	args := strings.Split(command, " ")
 
@@ -340,7 +398,11 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		return err
 	}
 
-	io.Copy(os.Stdout, res.Reader)
+	if currentJob.LogWriter != nil {
+		io.Copy(io.MultiWriter(os.Stdout, currentJob.LogWriter), res.Reader)
+	} else {
+		io.Copy(os.Stdout, res.Reader)
+	}
 
 	status, err := r.cli.ContainerExecInspect(r.ctx, exec.ID)
 	if err != nil {
@@ -357,7 +419,9 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 			tr := tar.NewReader(reader)
 			tr.Next()
 			b, _ := io.ReadAll(tr)
-			fmt.Println("\n" + string(b))
+			output := "\n" + string(b)
+			fmt.Println(output)
+			writeJobLog(currentJob, output)
 		}
 		color.Unset()
 
@@ -384,7 +448,9 @@ func (r Runner) commandRunner(command string, name string, currentJob Job) error
 		if len(b) != 0 {
 			color.Set(color.FgGreen)
 			currentJob.InfoLog.Println("Command Log:")
-			fmt.Println("\n" + string(b))
+			output := "\n" + string(b)
+			fmt.Println(output)
+			writeJobLog(currentJob, output)
 			color.Unset()
 		}
 	}
@@ -410,7 +476,11 @@ func (r Runner) internalExec(command string, currentJob Job) error {
 		return err
 	}
 
-	io.Copy(os.Stdout, res.Reader)
+	if currentJob.LogWriter != nil {
+		io.Copy(io.MultiWriter(os.Stdout, currentJob.LogWriter), res.Reader)
+	} else {
+		io.Copy(os.Stdout, res.Reader)
+	}
 
 	_, err = r.cli.ContainerExecInspect(r.ctx, exec.ID)
 	if err != nil {
@@ -447,7 +517,7 @@ func (r *Runner) createGlobalContext(jobs []*Job) {
 // setupJobLogging initializes logging for a job, using event-aware logger if broadcaster is available
 func (r *Runner) setupJobLogging(currentJob *Job, logsWithTime bool) {
 	broadcaster := sse.GetGlobalBroadcaster()
-	
+
 	if broadcaster != nil {
 		// Use event-aware logger
 		var flag int
@@ -456,14 +526,15 @@ func (r *Runner) setupJobLogging(currentJob *Job, logsWithTime bool) {
 		} else {
 			flag = 0
 		}
-		
+
 		eventLogger := sse.NewEventLogger(
-			broadcaster, 
-			currentJob.Name, 
-			fmt.Sprintf("⚉ %s ", currentJob.Name), 
+			broadcaster,
+			currentJob.Name,
+			fmt.Sprintf("⚉ %s ", currentJob.Name),
 			flag,
+			sse.WithRunContext(currentJob.RunID, currentJob.LogWriter),
 		)
-		
+
 		// The EventLogger embeds a *log.Logger, so it can be used as log.Log
 		currentJob.InfoLog = eventLogger
 	} else {
@@ -477,5 +548,16 @@ func (r *Runner) setupJobLogging(currentJob *Job, logsWithTime bool) {
 		} else {
 			currentJob.InfoLog = log.New(os.Stdout, fmt.Sprintf("⚉ %s ", currentJob.Name), 0)
 		}
+	}
+}
+
+func writeJobLog(currentJob Job, output string) {
+	if currentJob.LogWriter == nil || output == "" {
+		return
+	}
+
+	_, _ = fmt.Fprint(currentJob.LogWriter, output)
+	if !strings.HasSuffix(output, "\n") {
+		_, _ = fmt.Fprintln(currentJob.LogWriter)
 	}
 }

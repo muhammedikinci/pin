@@ -118,4 +118,3 @@ func (eb *eventBroadcaster) GetClientCount() int {
 	defer eb.mutex.RUnlock()
 	return len(eb.clients)
 }
-

@@ -18,7 +18,7 @@ func (ce *ConditionEvaluator) EvaluateCondition(condition string) bool {
 	}
 
 	condition = strings.TrimSpace(condition)
-	
+
 	if strings.Contains(condition, "&&") {
 		return ce.evaluateAnd(condition)
 	} else if strings.Contains(condition, "||") {
@@ -28,7 +28,7 @@ func (ce *ConditionEvaluator) EvaluateCondition(condition string) bool {
 	} else if strings.Contains(condition, "!=") {
 		return ce.evaluateInequality(condition)
 	}
-	
+
 	return ce.evaluateVariable(condition)
 }
 
@@ -37,10 +37,10 @@ func (ce *ConditionEvaluator) evaluateEquality(condition string) bool {
 	if len(parts) != 2 {
 		return false
 	}
-	
+
 	left := ce.resolveValue(strings.TrimSpace(parts[0]))
 	right := ce.resolveValue(strings.TrimSpace(parts[1]))
-	
+
 	return left == right
 }
 
@@ -49,10 +49,10 @@ func (ce *ConditionEvaluator) evaluateInequality(condition string) bool {
 	if len(parts) != 2 {
 		return false
 	}
-	
+
 	left := ce.resolveValue(strings.TrimSpace(parts[0]))
 	right := ce.resolveValue(strings.TrimSpace(parts[1]))
-	
+
 	return left != right
 }
 
@@ -105,20 +105,20 @@ func (ce *ConditionEvaluator) evaluateVariable(condition string) bool {
 
 func (ce *ConditionEvaluator) resolveValue(value string) string {
 	value = strings.TrimSpace(value)
-	
+
 	if strings.HasPrefix(value, "$") {
 		envVar := value[1:]
 		return os.Getenv(envVar)
 	}
-	
+
 	if strings.HasPrefix(value, "\"") && strings.HasSuffix(value, "\"") {
 		return value[1 : len(value)-1]
 	}
-	
+
 	if strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'") {
 		return value[1 : len(value)-1]
 	}
-	
+
 	return value
 }
 
@@ -126,7 +126,7 @@ func (ce *ConditionEvaluator) IsValidCondition(condition string) bool {
 	if condition == "" {
 		return true
 	}
-	
+
 	validPattern := regexp.MustCompile(`^[\w\s\$"'=!&|]+$`)
 	return validPattern.MatchString(condition)
 }

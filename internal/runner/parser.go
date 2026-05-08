@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"io"
 	"reflect"
 	"strings"
 
@@ -11,6 +12,8 @@ type Pipeline struct {
 	Workflow     []*Job
 	LogsWithTime bool
 	DockerHost   string
+	RunID        string
+	LogWriter    io.Writer
 }
 
 // ParseFromViper parses pipeline from the current viper configuration
@@ -63,6 +66,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 	}
 
 	soloExecution := getBool(configMap["soloexecution"], false)
+	hostExecution := getBool(configMap["host"], false)
 	isParallel := getBool(configMap["parallel"], false)
 	copyIgnore := getStringArray(configMap["copyignore"])
 	script := getStringArray(configMap["script"])
@@ -80,6 +84,7 @@ func generateJob(configMap map[string]interface{}) (*Job, error) {
 		CopyFiles:     copyFiles,
 		WorkDir:       workDir,
 		SoloExecution: soloExecution,
+		HostExecution: hostExecution,
 		IsParallel:    isParallel,
 		Port:          port,
 		CopyIgnore:    copyIgnore,
@@ -150,7 +155,7 @@ func getJobPort(port interface{}) []Port {
 // - "localhost:8080:80" -> hostIP: "localhost", hostPort: "8080", containerPort: "80"
 func parsePortString(portStr string) Port {
 	parts := strings.Split(portStr, ":")
-	
+
 	switch len(parts) {
 	case 2:
 		// Format: "8080:80"
@@ -216,7 +221,7 @@ func getRetryConfig(retryInterface interface{}) RetryConfig {
 	// Default retry config (no retry)
 	defaultConfig := RetryConfig{
 		MaxAttempts:       1,
-		DelaySeconds:     1,
+		DelaySeconds:      1,
 		BackoffMultiplier: 1.0,
 	}
 

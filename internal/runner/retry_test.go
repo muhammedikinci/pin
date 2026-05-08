@@ -63,8 +63,8 @@ func TestRetryDelayCalculation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Calculate delay using the same formula as in jobRunnerWithRetry
-			delay := time.Duration(float64(tt.delaySeconds) * math.Pow(tt.backoffMultiplier, float64(tt.attempt-1))) * time.Second
-			
+			delay := time.Duration(float64(tt.delaySeconds)*math.Pow(tt.backoffMultiplier, float64(tt.attempt-1))) * time.Second
+
 			if delay != tt.expectedDelay {
 				t.Errorf("Expected delay %v, got %v", tt.expectedDelay, delay)
 			}
@@ -76,7 +76,7 @@ func TestRetryConfig_DefaultValues(t *testing.T) {
 	job := &Job{
 		RetryConfig: RetryConfig{
 			MaxAttempts:       1, // Default - no retry
-			DelaySeconds:     1,
+			DelaySeconds:      1,
 			BackoffMultiplier: 1.0,
 		},
 	}
@@ -98,7 +98,7 @@ func TestRetryWithLogging(t *testing.T) {
 		Name: "log-test-job",
 		RetryConfig: RetryConfig{
 			MaxAttempts:       2,
-			DelaySeconds:     1,
+			DelaySeconds:      1,
 			BackoffMultiplier: 1.0,
 		},
 		ErrorChannel: make(chan error, 1),

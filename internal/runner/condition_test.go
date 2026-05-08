@@ -102,7 +102,7 @@ func TestConditionEvaluator_EvaluateCondition(t *testing.T) {
 			for key, value := range tt.envVars {
 				os.Setenv(key, value)
 			}
-			
+
 			defer func() {
 				for key := range tt.envVars {
 					os.Unsetenv(key)
@@ -160,7 +160,7 @@ func TestConditionEvaluator_ResolveValue(t *testing.T) {
 			for key, value := range tt.envVars {
 				os.Setenv(key, value)
 			}
-			
+
 			defer func() {
 				for key := range tt.envVars {
 					os.Unsetenv(key)

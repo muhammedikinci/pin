@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
+	pathfile "path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -17,52 +19,29 @@ import (
 	"github.com/spf13/viper"
 )
 
+var configMutex sync.Mutex
+
+type DaemonOptions struct {
+	Host               string
+	Port               int
+	Token              string
+	MaxConcurrent      int
+	DataDir            string
+	GitHubSecret       string
+	GitHubBranch       string
+	GitHubPipelineFile string
+}
+
 func Apply(filepath string) error {
-	if err := checkFileExists(filepath); err != nil {
-		return err
-	}
-
-	if err := readConfig(filepath); err != nil {
-		return err
-	}
-
-	// Validate pipeline configuration before execution
-	validator := NewPipelineValidator()
-	if err := validator.ValidatePipeline(); err != nil {
-		// Format and display the error using our enhanced error reporting
-		if pinErr, ok := err.(*pinerrors.PinError); ok {
-			fmt.Print(pinerrors.ConsoleFormatter.Format(pinErr))
-		} else {
-			// Fallback for non-PinError errors
-			color.Set(color.FgRed)
-			fmt.Printf("Pipeline validation failed: %s\n", err.Error())
-			color.Unset()
-		}
+	pipeline, err := loadPipelineFromFile(filepath)
+	if err != nil {
+		printPipelineSetupError(err)
 		return err
 	}
 
 	color.Set(color.FgGreen)
 	fmt.Println("✅ Pipeline validation successful")
 	color.Unset()
-
-	pipeline, err := parse()
-	if err != nil {
-		// Enhanced error handling for parse errors
-		if pinErr, ok := err.(*pinerrors.PinError); ok {
-			fmt.Print(pinerrors.ConsoleFormatter.Format(pinErr))
-		} else {
-			// Create enhanced error for unknown parse errors
-			parseErr := pinerrors.NewPinError(pinerrors.ErrCodePipelineValidation, "failed to parse pipeline configuration").
-				WithCause(err).
-				AddSuggestions(
-					"Check YAML syntax and formatting",
-					"Ensure all required fields are present",
-					"Validate YAML using an online validator",
-				)
-			fmt.Print(pinerrors.ConsoleFormatter.Format(parseErr))
-		}
-		return err
-	}
 
 	currentRunner := Runner{}
 
@@ -89,6 +68,73 @@ func Apply(filepath string) error {
 	return nil
 }
 
+func Validate(filepath string) error {
+	_, err := loadPipelineFromFile(filepath)
+	return err
+}
+
+func loadPipelineFromFile(filepath string) (Pipeline, error) {
+	if err := checkFileExists(filepath); err != nil {
+		return Pipeline{}, err
+	}
+
+	configMutex.Lock()
+	defer configMutex.Unlock()
+
+	if err := readConfig(filepath); err != nil {
+		return Pipeline{}, err
+	}
+
+	return validateAndParseCurrentConfig()
+}
+
+func loadPipelineFromYAML(yamlContent []byte) (Pipeline, error) {
+	configMutex.Lock()
+	defer configMutex.Unlock()
+
+	viper.Reset()
+	viper.SetConfigType("yaml")
+	if err := viper.ReadConfig(bytes.NewBuffer(yamlContent)); err != nil {
+		return Pipeline{}, fmt.Errorf("failed to parse YAML configuration: %w", err)
+	}
+
+	return validateAndParseCurrentConfig()
+}
+
+func validateAndParseCurrentConfig() (Pipeline, error) {
+	validator := NewPipelineValidator()
+	if err := validator.ValidatePipeline(); err != nil {
+		return Pipeline{}, err
+	}
+
+	pipeline, err := parse()
+	if err != nil {
+		if pinErr, ok := err.(*pinerrors.PinError); ok {
+			return Pipeline{}, pinErr
+		}
+		return Pipeline{}, pinerrors.NewPinError(pinerrors.ErrCodePipelineValidation, "failed to parse pipeline configuration").
+			WithCause(err).
+			AddSuggestions(
+				"Check YAML syntax and formatting",
+				"Ensure all required fields are present",
+				"Validate YAML using an online validator",
+			)
+	}
+
+	return pipeline, nil
+}
+
+func printPipelineSetupError(err error) {
+	if pinErr, ok := err.(*pinerrors.PinError); ok {
+		fmt.Print(pinerrors.ConsoleFormatter.Format(pinErr))
+		return
+	}
+
+	color.Set(color.FgRed)
+	fmt.Printf("Pipeline validation failed: %s\n", err.Error())
+	color.Unset()
+}
+
 func checkFileExists(filepath string) error {
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		fileBuilder := pinerrors.NewFileErrorBuilder()
@@ -109,6 +155,7 @@ func readConfig(filepath string) error {
 		return fileBuilder.FileNotFound(filepath, err)
 	}
 
+	viper.Reset()
 	viper.SetConfigType("yaml")
 
 	err = viper.ReadConfig(bytes.NewBuffer(fileBytes))
@@ -128,25 +175,13 @@ func readConfig(filepath string) error {
 }
 
 // executeYAMLPipeline executes a pipeline from YAML content
-func executeYAMLPipeline(yamlContent []byte) error {
-	// Configure viper to read YAML from the provided content
-	viper.SetConfigType("yaml")
-	err := viper.ReadConfig(bytes.NewBuffer(yamlContent))
+func executeYAMLPipeline(yamlContent []byte, runID string, logWriter io.Writer) error {
+	pipeline, err := loadPipelineFromYAML(yamlContent)
 	if err != nil {
-		return fmt.Errorf("failed to parse YAML configuration: %w", err)
+		return err
 	}
-
-	// Validate pipeline configuration before execution
-	validator := NewPipelineValidator()
-	if err := validator.ValidatePipeline(); err != nil {
-		return fmt.Errorf("pipeline validation failed: %w", err)
-	}
-
-	// Parse and run the pipeline
-	pipeline, err := parse()
-	if err != nil {
-		return fmt.Errorf("failed to parse pipeline: %w", err)
-	}
+	pipeline.RunID = runID
+	pipeline.LogWriter = logWriter
 
 	currentRunner := Runner{}
 	if err := currentRunner.run(pipeline); err != nil {
@@ -158,19 +193,54 @@ func executeYAMLPipeline(yamlContent []byte) error {
 
 // ApplyDaemon runs the application in daemon mode with SSE server
 func ApplyDaemon(filepath string) error {
-	log.Printf("Starting PIN in daemon mode...")
+	return ApplyDaemonWithOptions(filepath, DaemonOptions{
+		Host:          "127.0.0.1",
+		Port:          8081,
+		MaxConcurrent: 1,
+	})
+}
+
+func ApplyDaemonWithOptions(filepath string, options DaemonOptions) error {
+	if options.Host == "" {
+		options.Host = "127.0.0.1"
+	}
+	if options.Port == 0 {
+		options.Port = 8081
+	}
+	if options.MaxConcurrent < 1 {
+		options.MaxConcurrent = 1
+	}
+	if options.DataDir == "" {
+		options.DataDir = ".pin"
+	}
+
+	log.Printf("Starting PIN in daemon mode on %s:%d...", options.Host, options.Port)
+	if options.Token == "" && (options.Host == "0.0.0.0" || options.Host == "::") {
+		log.Printf("WARNING: daemon is exposed without a token. Set PIN_TOKEN or pass --token before opening it to the internet.")
+	}
 
 	// Create event broadcaster
 	broadcaster := sse.NewEventBroadcaster()
 	sse.SetGlobalBroadcaster(broadcaster)
+	defer sse.SetGlobalBroadcaster(nil)
 
 	// Set pipeline executor function to handle HTTP triggered pipelines
-	sse.SetPipelineExecutor(func(yamlContent []byte) error {
-		return executeYAMLPipeline(yamlContent)
+	sse.SetPipelineExecutor(func(yamlContent []byte, execution sse.PipelineExecution) error {
+		return executeYAMLPipeline(yamlContent, execution.RunID, execution.LogWriter)
 	})
+	defer sse.SetPipelineExecutor(nil)
 
 	// Create and start SSE server
-	sseServer := sse.NewServer(8081, broadcaster, log.New(os.Stdout, "[SSE] ", log.LstdFlags))
+	sseServer := sse.NewServerWithOptions(sse.ServerOptions{
+		Host:            options.Host,
+		Port:            options.Port,
+		Token:           options.Token,
+		MaxConcurrent:   options.MaxConcurrent,
+		DataDir:         pathfile.Join(options.DataDir, "runs"),
+		GitHubSecret:    options.GitHubSecret,
+		GitHubBranch:    options.GitHubBranch,
+		WebhookPipeline: options.GitHubPipelineFile,
+	}, broadcaster, log.New(os.Stdout, "[SSE] ", log.LstdFlags))
 
 	// Note: Context for graceful shutdown is handled by signal handling
 
@@ -184,7 +254,7 @@ func ApplyDaemon(filepath string) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Printf("SSE server starting on :8081")
+		log.Printf("SSE server starting on %s:%d", options.Host, options.Port)
 		if err := sseServer.Start(); err != nil && err.Error() != "http: Server closed" {
 			log.Printf("SSE server error: %v", err)
 		}
@@ -195,8 +265,9 @@ func ApplyDaemon(filepath string) error {
 		Type: "daemon_start",
 		Data: map[string]interface{}{
 			"message":         "PIN daemon started successfully",
-			"sse_endpoint":    "http://localhost:8081/events",
-			"health_endpoint": "http://localhost:8081/health",
+			"sse_endpoint":    fmt.Sprintf("http://%s:%d/events", displayHost(options.Host), options.Port),
+			"health_endpoint": fmt.Sprintf("http://%s:%d/health", displayHost(options.Host), options.Port),
+			"runs_endpoint":   fmt.Sprintf("http://%s:%d/runs", displayHost(options.Host), options.Port),
 		},
 		Timestamp: time.Now(),
 	})
@@ -269,4 +340,11 @@ func ApplyDaemon(filepath string) error {
 	}
 
 	return nil
+}
+
+func displayHost(host string) string {
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		return "localhost"
+	}
+	return host
 }

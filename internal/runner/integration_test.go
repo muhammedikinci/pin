@@ -50,7 +50,7 @@ test-job:
 	// Verify retry configuration
 	expectedRetry := RetryConfig{
 		MaxAttempts:       3,
-		DelaySeconds:     2,
+		DelaySeconds:      2,
 		BackoffMultiplier: 1.5,
 	}
 
@@ -88,11 +88,11 @@ simple-job:
 	}
 
 	job := pipeline.Workflow[0]
-	
+
 	// Should use default retry config
 	defaultRetry := RetryConfig{
 		MaxAttempts:       1,
-		DelaySeconds:     1,
+		DelaySeconds:      1,
 		BackoffMultiplier: 1.0,
 	}
 
@@ -305,7 +305,7 @@ min-job:
 			shouldError: false,
 			expectValues: RetryConfig{
 				MaxAttempts:       1,
-				DelaySeconds:     0,
+				DelaySeconds:      0,
 				BackoffMultiplier: 0.1,
 			},
 		},
@@ -325,7 +325,7 @@ max-job:
 			shouldError: false,
 			expectValues: RetryConfig{
 				MaxAttempts:       10,
-				DelaySeconds:     300,
+				DelaySeconds:      300,
 				BackoffMultiplier: 10.0,
 			},
 		},
@@ -342,7 +342,7 @@ empty-job:
 			shouldError: false,
 			expectValues: RetryConfig{
 				MaxAttempts:       1,   // default
-				DelaySeconds:     1,   // default
+				DelaySeconds:      1,   // default
 				BackoffMultiplier: 1.0, // default
 			},
 		},

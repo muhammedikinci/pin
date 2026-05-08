@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"io"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/muhammedikinci/pin/internal/container_manager"
 	"github.com/muhammedikinci/pin/internal/image_manager"
@@ -16,6 +18,7 @@ type Job struct {
 	WorkDir          string
 	CopyFiles        bool
 	SoloExecution    bool
+	HostExecution    bool
 	Port             []Port
 	CopyIgnore       []string
 	IsParallel       bool
@@ -30,11 +33,13 @@ type Job struct {
 	ArtifactPath     string
 	Condition        string
 	RetryConfig      RetryConfig
+	RunID            string
+	LogWriter        io.Writer
 }
 
 type RetryConfig struct {
-	MaxAttempts int
-	DelaySeconds int
+	MaxAttempts       int
+	DelaySeconds      int
 	BackoffMultiplier float64
 }
 

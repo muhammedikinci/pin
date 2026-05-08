@@ -15,7 +15,7 @@ func TestGetRetryConfig(t *testing.T) {
 			input: nil,
 			expected: RetryConfig{
 				MaxAttempts:       1,
-				DelaySeconds:     1,
+				DelaySeconds:      1,
 				BackoffMultiplier: 1.0,
 			},
 		},
@@ -24,7 +24,7 @@ func TestGetRetryConfig(t *testing.T) {
 			input: "invalid",
 			expected: RetryConfig{
 				MaxAttempts:       1,
-				DelaySeconds:     1,
+				DelaySeconds:      1,
 				BackoffMultiplier: 1.0,
 			},
 		},
@@ -37,7 +37,7 @@ func TestGetRetryConfig(t *testing.T) {
 			},
 			expected: RetryConfig{
 				MaxAttempts:       5,
-				DelaySeconds:     10,
+				DelaySeconds:      10,
 				BackoffMultiplier: 2.5,
 			},
 		},
@@ -48,7 +48,7 @@ func TestGetRetryConfig(t *testing.T) {
 			},
 			expected: RetryConfig{
 				MaxAttempts:       3,
-				DelaySeconds:     1,  // default
+				DelaySeconds:      1,   // default
 				BackoffMultiplier: 1.0, // default
 			},
 		},
@@ -59,8 +59,8 @@ func TestGetRetryConfig(t *testing.T) {
 				"delay":    5,
 			},
 			expected: RetryConfig{
-				MaxAttempts:       1,   // default due to invalid type
-				DelaySeconds:     5,
+				MaxAttempts:       1, // default due to invalid type
+				DelaySeconds:      5,
 				BackoffMultiplier: 1.0, // default
 			},
 		},
@@ -71,8 +71,8 @@ func TestGetRetryConfig(t *testing.T) {
 				"delay":    2,
 			},
 			expected: RetryConfig{
-				MaxAttempts:       1,   // default due to invalid value
-				DelaySeconds:     2,
+				MaxAttempts:       1, // default due to invalid value
+				DelaySeconds:      2,
 				BackoffMultiplier: 1.0, // default
 			},
 		},
@@ -85,7 +85,7 @@ func TestGetRetryConfig(t *testing.T) {
 			},
 			expected: RetryConfig{
 				MaxAttempts:       3,
-				DelaySeconds:     1,   // default due to invalid type
+				DelaySeconds:      1, // default due to invalid type
 				BackoffMultiplier: 1.5,
 			},
 		},
@@ -97,7 +97,7 @@ func TestGetRetryConfig(t *testing.T) {
 			},
 			expected: RetryConfig{
 				MaxAttempts:       2,
-				DelaySeconds:     1, // default due to invalid value
+				DelaySeconds:      1,   // default due to invalid value
 				BackoffMultiplier: 1.0, // default
 			},
 		},
@@ -110,7 +110,7 @@ func TestGetRetryConfig(t *testing.T) {
 			},
 			expected: RetryConfig{
 				MaxAttempts:       4,
-				DelaySeconds:     3,
+				DelaySeconds:      3,
 				BackoffMultiplier: 1.0, // default due to invalid type
 			},
 		},
@@ -123,7 +123,7 @@ func TestGetRetryConfig(t *testing.T) {
 			},
 			expected: RetryConfig{
 				MaxAttempts:       2,
-				DelaySeconds:     1,
+				DelaySeconds:      1,
 				BackoffMultiplier: 1.0, // default due to invalid value
 			},
 		},
@@ -163,7 +163,7 @@ func TestGenerateJobWithRetryConfig(t *testing.T) {
 
 	expectedRetry := RetryConfig{
 		MaxAttempts:       5,
-		DelaySeconds:     10,
+		DelaySeconds:      10,
 		BackoffMultiplier: 2.0,
 	}
 
@@ -191,7 +191,7 @@ func TestGenerateJobWithoutRetryConfig(t *testing.T) {
 	// Should use default retry config
 	expectedRetry := RetryConfig{
 		MaxAttempts:       1,
-		DelaySeconds:     1,
+		DelaySeconds:      1,
 		BackoffMultiplier: 1.0,
 	}
 
@@ -203,5 +203,23 @@ func TestGenerateJobWithoutRetryConfig(t *testing.T) {
 	}
 	if job.RetryConfig.BackoffMultiplier != expectedRetry.BackoffMultiplier {
 		t.Errorf("RetryConfig.BackoffMultiplier = %f, expected %f", job.RetryConfig.BackoffMultiplier, expectedRetry.BackoffMultiplier)
+	}
+}
+
+func TestGenerateJobWithHostExecution(t *testing.T) {
+	configMap := map[string]interface{}{
+		"host": true,
+		"script": []interface{}{
+			"echo deploy",
+		},
+	}
+
+	job, err := generateJob(configMap)
+	if err != nil {
+		t.Fatalf("generateJob failed: %v", err)
+	}
+
+	if !job.HostExecution {
+		t.Fatal("expected host execution to be enabled")
 	}
 }

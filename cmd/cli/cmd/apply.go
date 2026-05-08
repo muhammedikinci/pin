@@ -14,19 +14,16 @@ var daemonMode bool
 // applyCmd represents the apply command
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Run a pipeline, kept as a backward-compatible alias",
+	Long: `Run a pipeline from a YAML file.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+This command is kept for existing users. Prefer "pin run" for local runs and
+"pin daemon" plus "pin trigger" for VPS usage.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if daemonMode {
-			runner.ApplyDaemon(pipelineFilePath)
-		} else {
-			runner.Apply(pipelineFilePath)
+			return runner.ApplyDaemon(pipelineFilePath)
 		}
+		return runner.Apply(pipelineFilePath)
 	},
 }
 

@@ -153,9 +153,9 @@ func TestValidateRetryConfig(t *testing.T) {
 			name: "valid minimum values",
 			configMap: map[string]interface{}{
 				"retry": map[string]interface{}{
-					"attempts": 1,    // min allowed
-					"delay":    0,    // min allowed
-					"backoff":  0.1,  // just above min
+					"attempts": 1,   // min allowed
+					"delay":    0,   // min allowed
+					"backoff":  0.1, // just above min
 				},
 			},
 			expectErr: false,
@@ -180,6 +180,18 @@ func TestValidateRetryConfig(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestValidateImageOrDockerfileAllowsHostJobs(t *testing.T) {
+	validator := NewPipelineValidator()
+
+	if err := validator.validateImageOrDockerfile(map[string]interface{}{"host": true}); err != nil {
+		t.Fatalf("expected host job without image/dockerfile to be valid: %v", err)
+	}
+
+	if err := validator.validateImageOrDockerfile(map[string]interface{}{"host": true, "image": "alpine:latest"}); err == nil {
+		t.Fatal("expected host job with image to be invalid")
 	}
 }
 
